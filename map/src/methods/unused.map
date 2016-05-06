@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "unused.js",
+  "sourceRoot": "../../../src/methods",
+  "sources": [
+    "unused.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}
