@@ -1,52 +1,87 @@
-var core, has, printDependencies;
+var Path, Q, printDependencies, sync;
 
-has = require("has");
+Path = require("path");
 
-core = require("../core");
+sync = require("sync");
+
+Q = require("q");
 
 module.exports = function(options) {
-  var mod, moduleName;
-  moduleName = options._[2];
+  var Module, mod, mods, moduleName;
+  Module = lotus.Module;
+  log.clear();
+  moduleName = options._.shift();
   if (moduleName) {
-    mod = lotus.Module(moduleName);
-    printDependencies(mod);
+    if (moduleName[0] === ".") {
+      moduleName = Path.resolve(process.cwd(), moduleName[0]);
+    }
+    if (moduleName[0] === "/") {
+      moduleName = Path.relative(lotus.path, moduleName);
+    }
+    mod = Module(moduleName);
+    printDependencies(mod).then(function() {
+      return process.exit();
+    }).done();
     return;
   }
-  return core.initModules(lotus.path).then(function(modules) {
-    sync.each(modules, function(mod) {
-      return printDependencies(mod);
-    });
+  mods = Module.crawl(lotus.path);
+  return Q.all(sync.map(mods, function(mod) {
+    return printDependencies(mod);
+  })).then(function() {
     return process.exit();
   }).done();
 };
 
 printDependencies = function(mod) {
-  var dependencies;
-  if (!mod.config) {
-    log.moat(1);
-    log.gray("No config found.");
-    log.moat(1);
-    repl.sync({
-      mod: mod
+  return mod.parseDependencies().then(function() {
+    var absolutePaths, absolutes, relatives;
+    absolutes = Object.create(null);
+    relatives = Object.create(null);
+    sync.each(mod.files, function(file) {
+      return sync.each(file.dependencies, function(path) {
+        var files;
+        if (path[0] === ".") {
+          path = lotus.resolve(file.path, path);
+          files = relatives[path] != null ? relatives[path] : relatives[path] = [];
+        } else {
+          files = absolutes[path] != null ? absolutes[path] : absolutes[path] = [];
+        }
+        return files.push(file);
+      });
     });
-    return;
-  }
-  dependencies = mod.config.dependencies;
-  if (!dependencies) {
+    absolutePaths = Object.keys(absolutes);
+    if (!absolutePaths.length) {
+      return;
+    }
+    absolutePaths.sort(function(a, b) {
+      a = a.toLowerCase();
+      b = b.toLowerCase();
+      if (a > b) {
+        return 1;
+      } else if (a < b) {
+        return -1;
+      } else {
+        return 0;
+      }
+    });
     log.moat(1);
-    log.gray("No dependencies found.");
-    log.moat(1);
-    return;
-  }
-  log.moat(1);
-  log.bold(mod.name);
-  log.plusIndent(2);
-  sync.each(dependencies, function(version, dep) {
-    log.moat(0);
-    return log.yellow(dep);
+    log.gray("Which modules does ");
+    log.yellow(mod.name);
+    log.gray(" depend on?");
+    log.plusIndent(2);
+    sync.each(absolutePaths, function(path) {
+      log.moat(1);
+      log.white(path);
+      log.plusIndent(2);
+      sync.each(absolutes[path], function(file) {
+        log.moat(0);
+        return log.gray.dim(Path.relative(file.module.path, file.path));
+      });
+      return log.popIndent();
+    });
+    log.popIndent();
+    return log.moat(1);
   });
-  log.popIndent();
-  return log.moat(1);
 };
 
 //# sourceMappingURL=../../../map/src/methods/list.map

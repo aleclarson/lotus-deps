@@ -1,4 +1,4 @@
-var NODE_PATHS, Path, core, createImplicitMap, emptyFunction, inArray, printDependencies, printResults, prompt, resolveModulePath, saveImplicitDependency, sync, syncFs;
+var NODE_PATHS, Path, createImplicitMap, emptyFunction, inArray, printDependencies, printResults, prompt, saveImplicitDependency, sync, syncFs;
 
 emptyFunction = require("emptyFunction");
 
@@ -14,16 +14,16 @@ sync = require("sync");
 
 Path = require("path");
 
-core = require("../core");
-
 module.exports = function(options) {
-  var mod, moduleName, modulePath;
-  modulePath = options._[2];
+  var Module, mod, mods, moduleName, modulePath;
+  Module = lotus.Module;
+  log.clear();
+  modulePath = options._.shift();
   if (modulePath) {
-    modulePath = resolveModulePath(modulePath);
+    modulePath = Module.resolvePath(modulePath);
     moduleName = Path.relative(lotus.path, modulePath);
-    mod = lotus.Module(moduleName);
-    return core.initModule(mod).then(function() {
+    mod = Module(moduleName);
+    return mod.parseDependencies().then(function() {
       if (printDependencies(mod)) {
         return;
       }
@@ -34,10 +34,16 @@ module.exports = function(options) {
       log.green.dim("All dependencies look correct!");
       log.moat(1);
       return log.popIndent();
-    });
+    }).then(function() {
+      return process.exit();
+    }).done();
   } else {
-    return core.initModules(lotus.path).then(function(modules) {
-      sync.each(modules, printDependencies);
+    mods = Module.crawl(lotus.path);
+    return Q.all(sync.map(mods, function(mod) {
+      return mod.parseDependencies().then(function() {
+        return printDependencies(mod);
+      });
+    })).then(function() {
       return process.exit();
     }).done();
   }
@@ -80,7 +86,7 @@ printDependencies = function(mod) {
   missing = Object.create(null);
   found = Object.create(null);
   sync.each(mod.files, function(file) {
-    return sync.each(file.deps, function(dep) {
+    return sync.each(file.dependencies, function(dep) {
       var depPath, files, parts;
       if (dep[0] === ".") {
         depPath = lotus.resolve(dep, file.path);
@@ -137,7 +143,7 @@ printDependencies = function(mod) {
       } else {
         implicit.splice(implicit.indexOf(dep), 1);
       }
-      return core.saveConfig(mod);
+      return mod.saveConfig();
     });
   }
   if (unexpectedKeys.length) {
@@ -165,7 +171,7 @@ printDependencies = function(mod) {
       } else {
         explicit[dep] = result;
       }
-      return core.saveConfig(mod);
+      return mod.saveConfig();
     });
   }
   if (missingKeys.length) {
@@ -201,15 +207,6 @@ printResults = function(title, deps, iterator) {
   }
   log.popIndent();
   return log.moat(1);
-};
-
-resolveModulePath = function(modulePath) {
-  if (modulePath[0] === ".") {
-    modulePath = Path.relative(process.cwd(), modulePath);
-  } else if (modulePath[0] !== "/") {
-    modulePath = lotus.path + "/" + modulePath;
-  }
-  return modulePath;
 };
 
 //# sourceMappingURL=../../../map/src/methods/scan.map

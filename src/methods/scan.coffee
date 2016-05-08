@@ -7,17 +7,19 @@ prompt = require "prompt"
 sync = require "sync"
 Path = require "path"
 
-core = require "../core"
-
 module.exports = (options) ->
 
-  modulePath = options._[2]
+  { Module } = lotus
+
+  log.clear()
+
+  modulePath = options._.shift()
 
   if modulePath
-    modulePath = resolveModulePath modulePath
+    modulePath = Module.resolvePath modulePath
     moduleName = Path.relative lotus.path, modulePath
-    mod = lotus.Module moduleName
-    core.initModule mod
+    mod = Module moduleName
+    mod.parseDependencies()
     .then ->
       return if printDependencies mod
       log.moat 1
@@ -27,12 +29,15 @@ module.exports = (options) ->
       log.green.dim "All dependencies look correct!"
       log.moat 1
       log.popIndent()
+    .then -> process.exit()
+    .done()
 
   else
-    core.initModules lotus.path
-    .then (modules) ->
-      sync.each modules, printDependencies
-      process.exit()
+    mods = Module.crawl lotus.path
+    Q.all sync.map mods, (mod) ->
+      mod.parseDependencies()
+      .then -> printDependencies mod
+    .then -> process.exit()
     .done()
 
 createImplicitMap = (mod) ->
@@ -71,7 +76,8 @@ printDependencies = (mod) ->
   found = Object.create null
 
   sync.each mod.files, (file) ->
-    sync.each file.deps, (dep) ->
+
+    sync.each file.dependencies, (dep) ->
 
       if dep[0] is "."
         depPath = lotus.resolve dep, file.path
@@ -118,7 +124,7 @@ printDependencies = (mod) ->
       return unless prompt.sync { parseBool: yes }
       if explicit[dep] then delete explicit[dep]
       else implicit.splice implicit.indexOf(dep), 1
-      core.saveConfig mod
+      mod.saveConfig()
 
   if unexpectedKeys.length
 
@@ -140,7 +146,7 @@ printDependencies = (mod) ->
       if result is "."
         saveImplicitDependency mod, dep
       else explicit[dep] = result
-      core.saveConfig mod
+      mod.saveConfig()
 
   if missingKeys.length
     printResults "Missing relatives: ", missingKeys, (dep) ->
@@ -170,14 +176,3 @@ printResults = (title, deps, iterator = emptyFunction) ->
 
   log.popIndent()
   log.moat 1
-
-# TODO: Move this to 'lotus'
-resolveModulePath = (modulePath) ->
-
-  if modulePath[0] is "."
-    modulePath = Path.relative process.cwd(), modulePath
-
-  else if modulePath[0] isnt "/"
-    modulePath = lotus.path + "/" + modulePath
-
-  return modulePath

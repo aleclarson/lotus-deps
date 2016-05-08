@@ -1,11 +1,15 @@
 
+sync = require "sync"
 has = require "has"
-
-core = require "../core"
+Q = require "q"
 
 module.exports = (options) ->
 
-  moduleName = options._[2]
+  { Module } = lotus
+
+  log.clear()
+
+  moduleName = options._.shift()
 
   unless isType moduleName, String
     log.moat 1
@@ -17,25 +21,35 @@ module.exports = (options) ->
     log.moat 1
     process.exit()
 
-  core.initModules lotus.path
+  mods = Module.crawl lotus.path
 
-  .then (modules) ->
+  Q.all sync.map mods, (mod) ->
+    mod.load [ "config" ]
 
-    log.moat 1
-    log.gray "Modules that depend on "
-    log.white moduleName
-    log.gray ": "
-    log.moat 1
+  .then ->
 
-    log.plusIndent 2
-    sync.each modules, (mod) ->
+    mods = sync.filter mods, (mod) ->
       { dependencies } = mod.config
-      return unless isType dependencies, Object
-      return unless has dependencies, moduleName
-      log.moat 0
-      log.yellow mod.name
+      return no unless isType dependencies, Object
+      return has dependencies, moduleName
+
+    if mods.length
+      log.moat 1
+      log.gray "Which modules depend on "
+      log.yellow moduleName
+      log.gray "?"
+      log.plusIndent 2
+      sync.each mods, (mod) ->
+        log.moat 1
+        log.white mod.name
+
+    else
+      log.moat 1
+      log.gray "No modules depend on "
+      log.yellow moduleName
+      log.gray "."
+
     log.popIndent()
+    log.moat 1
 
     process.exit()
-
-  .done()
