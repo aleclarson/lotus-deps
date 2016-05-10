@@ -1,4 +1,5 @@
 
+assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
 NODE_PATHS = require "node-paths"
 inArray = require "in-array"
@@ -6,6 +7,7 @@ syncFs = require "io/sync"
 prompt = require "prompt"
 sync = require "sync"
 Path = require "path"
+Q = require "q"
 
 module.exports = (options) ->
 
@@ -20,15 +22,7 @@ module.exports = (options) ->
     moduleName = Path.relative lotus.path, modulePath
     mod = Module moduleName
     mod.parseDependencies()
-    .then ->
-      return if printDependencies mod
-      log.moat 1
-      log.bold mod.name
-      log.plusIndent 2
-      log.moat 1
-      log.green.dim "All dependencies look correct!"
-      log.moat 1
-      log.popIndent()
+    .then -> printDependencies mod
     .then -> process.exit()
     .done()
 
@@ -48,13 +42,6 @@ createImplicitMap = (mod) ->
     if Array.isArray deps
       results[dep] = yes for dep in deps
   return results
-
-saveImplicitDependency = (mod, dep) ->
-  config = mod.config.lotus ?= {}
-  implicit = config.implicitDependencies ?= []
-  implicit.push dep
-  implicit.sort (a, b) -> a > b # sorted by ascending
-  return
 
 printDependencies = (mod) ->
 
@@ -106,60 +93,107 @@ printDependencies = (mod) ->
   unexpectedKeys = Object.keys unexpected
   missingKeys = Object.keys missing
   unusedKeys = Object.keys unused
-  return no unless unexpectedKeys.length or missingKeys.length or unusedKeys.length
+
+  hasIssues =
+    (unexpectedKeys.length > 0) or
+    (missingKeys.length > 0) or
+    (unusedKeys.length > 0)
 
   log.moat 1
   log.bold mod.name
   log.plusIndent 2
 
-  if unusedKeys.length
+  if hasIssues
+    promise = printUnexpectedAbsolutes mod, unexpectedKeys, unexpected, explicit
+    printUnusedAbsolutes mod, unusedKeys, explicit, implicit
+    printMissingRelatives mod, missingKeys, missing
 
-    printResults "Unused absolutes: ", unusedKeys
-
-    sync.each unusedKeys, (dep) ->
-      log.moat 1
-      log.gray "Should we remove "
-      log.yellow dep
-      log.gray "?"
-      return unless prompt.sync { parseBool: yes }
-      if explicit[dep] then delete explicit[dep]
-      else implicit.splice implicit.indexOf(dep), 1
-      mod.saveConfig()
-
-  if unexpectedKeys.length
-
-    printResults "Unexpected absolutes: ", unexpectedKeys, (dep) ->
-      log.plusIndent 2
-      sync.each unexpected[dep], (file) ->
-        log.moat 0
-        log.gray.dim Path.relative file.module.path, file.path
-      log.popIndent()
-
-    sync.each unexpectedKeys, (dep) ->
-      log.moat 1
-      log.gray "What version of "
-      log.yellow dep
-      log.gray " do we depend on?"
-      log.gray.dim " (enter '.' to save implicitly)"
-      result = prompt.sync()
-      return unless result
-      if result is "."
-        saveImplicitDependency mod, dep
-      else explicit[dep] = result
-      mod.saveConfig()
-
-  if missingKeys.length
-    printResults "Missing relatives: ", missingKeys, (dep) ->
-      log.plusIndent 2
-      sync.each missing[dep], (file) ->
-        log.moat 0
-        log.gray.dim Path.relative file.module.path, file.path
-      log.popIndent()
+  else
+    log.moat 1
+    log.green.dim "All dependencies look correct!"
+    promise = Q()
 
   log.popIndent()
   log.moat 1
 
-  return yes
+  return promise
+
+printUnusedAbsolutes = (mod, depNames, explicit, implicit) ->
+
+  return unless depNames.length
+
+  printResults "Unused absolutes: ", depNames
+
+  sync.each depNames, (depName) ->
+    log.moat 1
+    log.gray "Should we remove "
+    log.yellow depName
+    log.gray "?"
+    return unless prompt.sync { parseBool: yes }
+    if explicit[depName] then delete explicit[depName]
+    else delete implicit[depName]
+    mod.saveConfig()
+
+printMissingRelatives = (mod, depNames, dependers) ->
+
+  return unless depNames.length
+
+  printResults "Missing relatives: ", depNames, (depName) ->
+    log.plusIndent 2
+    sync.each dependers[depName], (file) ->
+      log.moat 0
+      log.gray.dim Path.relative file.module.path, file.path
+    log.popIndent()
+
+printUnexpectedAbsolutes = (mod, depNames, dependers, explicit) ->
+
+  return Q() unless depNames.length
+
+  printResults "Unexpected absolutes: ", depNames, (depName) ->
+    log.plusIndent 2
+    sync.each dependers[depName], (file) ->
+      log.moat 0
+      log.gray.dim Path.relative file.module.path, file.path
+    log.popIndent()
+
+  return Q.all sync.map depNames, (depName) ->
+
+    log.moat 1
+    log.gray "What version of "
+    log.yellow depName
+    log.gray " do we depend on?"
+    log.gray.dim " (enter '.' to save implicitly)"
+
+    version = prompt.sync()
+    return if version is null
+
+    assertValidVersion depName, version
+
+    .then ->
+
+      if version isnt "."
+        explicit[depName] = version
+
+      else
+        config = mod.config.lotus ?= {}
+        implicit = config.implicitDependencies ?= []
+        implicit.push depName
+        implicit.sort (a, b) -> a > b # sorted by ascending
+
+      mod.saveConfig()
+
+    .fail (error) ->
+      failure = Failure error
+      log.moat 1
+      log.red error.constructor.name + ": "
+      log.white error.message
+      log.gray.dim " { key: '#{depName}', value: '#{version}' }"
+      if error.format isnt "simple"
+        log.moat 1
+        log.plusIndent 2
+        log.gray.dim Failure(error).stacks.format()
+        log.popIndent()
+      log.moat 1
 
 printResults = (title, deps, iterator = emptyFunction) ->
 

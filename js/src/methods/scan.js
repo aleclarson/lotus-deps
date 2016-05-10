@@ -1,4 +1,6 @@
-var NODE_PATHS, Path, createImplicitMap, emptyFunction, inArray, printDependencies, printResults, prompt, saveImplicitDependency, sync, syncFs;
+var NODE_PATHS, Path, Q, assertValidVersion, createImplicitMap, emptyFunction, inArray, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
+
+assertValidVersion = require("assertValidVersion");
 
 emptyFunction = require("emptyFunction");
 
@@ -14,6 +16,8 @@ sync = require("sync");
 
 Path = require("path");
 
+Q = require("q");
+
 module.exports = function(options) {
   var Module, mod, mods, moduleName, modulePath;
   Module = lotus.Module;
@@ -24,16 +28,7 @@ module.exports = function(options) {
     moduleName = Path.relative(lotus.path, modulePath);
     mod = Module(moduleName);
     return mod.parseDependencies().then(function() {
-      if (printDependencies(mod)) {
-        return;
-      }
-      log.moat(1);
-      log.bold(mod.name);
-      log.plusIndent(2);
-      log.moat(1);
-      log.green.dim("All dependencies look correct!");
-      log.moat(1);
-      return log.popIndent();
+      return printDependencies(mod);
     }).then(function() {
       return process.exit();
     }).done();
@@ -65,18 +60,8 @@ createImplicitMap = function(mod) {
   return results;
 };
 
-saveImplicitDependency = function(mod, dep) {
-  var base, config, implicit;
-  config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
-  implicit = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
-  implicit.push(dep);
-  implicit.sort(function(a, b) {
-    return a > b;
-  });
-};
-
 printDependencies = function(mod) {
-  var base, explicit, found, implicit, missing, missingKeys, unexpected, unexpectedKeys, unused, unusedKeys;
+  var base, explicit, found, hasIssues, implicit, missing, missingKeys, promise, unexpected, unexpectedKeys, unused, unusedKeys;
   if (!mod.files) {
     return false;
   }
@@ -120,73 +105,114 @@ printDependencies = function(mod) {
   unexpectedKeys = Object.keys(unexpected);
   missingKeys = Object.keys(missing);
   unusedKeys = Object.keys(unused);
-  if (!(unexpectedKeys.length || missingKeys.length || unusedKeys.length)) {
-    return false;
-  }
+  hasIssues = (unexpectedKeys.length > 0) || (missingKeys.length > 0) || (unusedKeys.length > 0);
   log.moat(1);
   log.bold(mod.name);
   log.plusIndent(2);
-  if (unusedKeys.length) {
-    printResults("Unused absolutes: ", unusedKeys);
-    sync.each(unusedKeys, function(dep) {
-      log.moat(1);
-      log.gray("Should we remove ");
-      log.yellow(dep);
-      log.gray("?");
-      if (!prompt.sync({
-        parseBool: true
-      })) {
-        return;
-      }
-      if (explicit[dep]) {
-        delete explicit[dep];
-      } else {
-        implicit.splice(implicit.indexOf(dep), 1);
-      }
-      return mod.saveConfig();
-    });
-  }
-  if (unexpectedKeys.length) {
-    printResults("Unexpected absolutes: ", unexpectedKeys, function(dep) {
-      log.plusIndent(2);
-      sync.each(unexpected[dep], function(file) {
-        log.moat(0);
-        return log.gray.dim(Path.relative(file.module.path, file.path));
-      });
-      return log.popIndent();
-    });
-    sync.each(unexpectedKeys, function(dep) {
-      var result;
-      log.moat(1);
-      log.gray("What version of ");
-      log.yellow(dep);
-      log.gray(" do we depend on?");
-      log.gray.dim(" (enter '.' to save implicitly)");
-      result = prompt.sync();
-      if (!result) {
-        return;
-      }
-      if (result === ".") {
-        saveImplicitDependency(mod, dep);
-      } else {
-        explicit[dep] = result;
-      }
-      return mod.saveConfig();
-    });
-  }
-  if (missingKeys.length) {
-    printResults("Missing relatives: ", missingKeys, function(dep) {
-      log.plusIndent(2);
-      sync.each(missing[dep], function(file) {
-        log.moat(0);
-        return log.gray.dim(Path.relative(file.module.path, file.path));
-      });
-      return log.popIndent();
-    });
+  if (hasIssues) {
+    promise = printUnexpectedAbsolutes(mod, unexpectedKeys, unexpected, explicit);
+    printUnusedAbsolutes(mod, unusedKeys, explicit, implicit);
+    printMissingRelatives(mod, missingKeys, missing);
+  } else {
+    log.moat(1);
+    log.green.dim("All dependencies look correct!");
+    promise = Q();
   }
   log.popIndent();
   log.moat(1);
-  return true;
+  return promise;
+};
+
+printUnusedAbsolutes = function(mod, depNames, explicit, implicit) {
+  if (!depNames.length) {
+    return;
+  }
+  printResults("Unused absolutes: ", depNames);
+  return sync.each(depNames, function(depName) {
+    log.moat(1);
+    log.gray("Should we remove ");
+    log.yellow(depName);
+    log.gray("?");
+    if (!prompt.sync({
+      parseBool: true
+    })) {
+      return;
+    }
+    if (explicit[depName]) {
+      delete explicit[depName];
+    } else {
+      delete implicit[depName];
+    }
+    return mod.saveConfig();
+  });
+};
+
+printMissingRelatives = function(mod, depNames, dependers) {
+  if (!depNames.length) {
+    return;
+  }
+  return printResults("Missing relatives: ", depNames, function(depName) {
+    log.plusIndent(2);
+    sync.each(dependers[depName], function(file) {
+      log.moat(0);
+      return log.gray.dim(Path.relative(file.module.path, file.path));
+    });
+    return log.popIndent();
+  });
+};
+
+printUnexpectedAbsolutes = function(mod, depNames, dependers, explicit) {
+  if (!depNames.length) {
+    return Q();
+  }
+  printResults("Unexpected absolutes: ", depNames, function(depName) {
+    log.plusIndent(2);
+    sync.each(dependers[depName], function(file) {
+      log.moat(0);
+      return log.gray.dim(Path.relative(file.module.path, file.path));
+    });
+    return log.popIndent();
+  });
+  return Q.all(sync.map(depNames, function(depName) {
+    var version;
+    log.moat(1);
+    log.gray("What version of ");
+    log.yellow(depName);
+    log.gray(" do we depend on?");
+    log.gray.dim(" (enter '.' to save implicitly)");
+    version = prompt.sync();
+    if (version === null) {
+      return;
+    }
+    return assertValidVersion(depName, version).then(function() {
+      var base, config, implicit;
+      if (version !== ".") {
+        explicit[depName] = version;
+      } else {
+        config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
+        implicit = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
+        implicit.push(depName);
+        implicit.sort(function(a, b) {
+          return a > b;
+        });
+      }
+      return mod.saveConfig();
+    }).fail(function(error) {
+      var failure;
+      failure = Failure(error);
+      log.moat(1);
+      log.red(error.constructor.name + ": ");
+      log.white(error.message);
+      log.gray.dim(" { key: '" + depName + "', value: '" + version + "' }");
+      if (error.format !== "simple") {
+        log.moat(1);
+        log.plusIndent(2);
+        log.gray.dim(Failure(error).stacks.format());
+        log.popIndent();
+      }
+      return log.moat(1);
+    });
+  }));
 };
 
 printResults = function(title, deps, iterator) {
