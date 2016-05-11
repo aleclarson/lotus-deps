@@ -13,7 +13,7 @@ module.exports = (options) ->
 
   { Module } = lotus
 
-  log.clear()
+  # log.clear()
 
   modulePath = options._.shift()
 
@@ -21,31 +21,25 @@ module.exports = (options) ->
     modulePath = Module.resolvePath modulePath
     moduleName = Path.relative lotus.path, modulePath
     mod = Module moduleName
-    mod.parseDependencies()
-    .then -> printDependencies mod
+    parseDependencies mod
     .then -> process.exit()
     .done()
 
   else
     mods = Module.crawl lotus.path
-    Q.all sync.map mods, (mod) ->
-      mod.parseDependencies()
-      .then -> printDependencies mod
+    Q.all sync.map mods, parseDependencies
     .then -> process.exit()
     .done()
 
-createImplicitMap = (mod) ->
-  results = Object.create null
-  config = mod.config.lotus
-  if config
-    deps = config.implicitDependencies
-    if Array.isArray deps
-      results[dep] = yes for dep in deps
-  return results
+parseDependencies = (mod) ->
+  mod.parseDependencies()
+  .then -> printDependencies mod
+  .fail (error) -> throwFailure error, { mod }
 
 printDependencies = (mod) ->
 
   return no unless mod.files
+  return no unless Object.keys(mod.files).length
 
   # The map of explicit dependencies in 'package.json'
   explicit = mod.config.dependencies ?= {}
@@ -167,19 +161,18 @@ printUnexpectedAbsolutes = (mod, depNames, dependers, explicit) ->
     version = prompt.sync()
     return if version is null
 
+    if version is "."
+      config = mod.config.lotus ?= {}
+      implicit = config.implicitDependencies ?= []
+      implicit.push depName
+      implicit.sort (a, b) -> a > b # sorted by ascending
+      mod.saveConfig()
+      return
+
     assertValidVersion depName, version
 
     .then ->
-
-      if version isnt "."
-        explicit[depName] = version
-
-      else
-        config = mod.config.lotus ?= {}
-        implicit = config.implicitDependencies ?= []
-        implicit.push depName
-        implicit.sort (a, b) -> a > b # sorted by ascending
-
+      explicit[depName] = version
       mod.saveConfig()
 
     .fail (error) ->
@@ -210,3 +203,12 @@ printResults = (title, deps, iterator = emptyFunction) ->
 
   log.popIndent()
   log.moat 1
+
+createImplicitMap = (mod) ->
+  results = Object.create null
+  config = mod.config.lotus
+  if config
+    deps = config.implicitDependencies
+    if Array.isArray deps
+      results[dep] = yes for dep in deps
+  return results

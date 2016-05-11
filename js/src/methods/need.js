@@ -25,32 +25,40 @@ module.exports = function(options) {
   return Q.all(sync.map(mods, function(mod) {
     return mod.load(["config"]);
   })).then(function() {
-    mods = sync.filter(mods, function(mod) {
-      var dependencies;
-      dependencies = mod.config.dependencies;
-      if (!isType(dependencies, Object)) {
-        return false;
+    var deps;
+    deps = Object.create(null);
+    sync.each(mods, function(mod) {
+      var configDeps;
+      configDeps = mod.config.dependencies;
+      if (!isType(configDeps, Object)) {
+        return;
       }
-      return has(dependencies, moduleName);
+      if (!has(configDeps, moduleName)) {
+        return;
+      }
+      return deps[mod.name] = configDeps[moduleName];
     });
-    if (mods.length) {
+    if (Object.keys(deps).length) {
       log.moat(1);
       log.gray("Which modules depend on ");
       log.yellow(moduleName);
       log.gray("?");
       log.plusIndent(2);
-      sync.each(mods, function(mod) {
+      sync.each(deps, function(version, depName) {
         log.moat(1);
-        return log.white(mod.name);
+        log.white(depName);
+        log.gray.dim(": ");
+        return log.gray(version);
       });
+      log.popIndent();
+      log.moat(1);
     } else {
       log.moat(1);
       log.gray("No modules depend on ");
       log.yellow(moduleName);
       log.gray(".");
+      log.moat(1);
     }
-    log.popIndent();
-    log.moat(1);
     return process.exit();
   });
 };

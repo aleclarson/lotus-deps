@@ -1,4 +1,4 @@
-var NODE_PATHS, Path, Q, assertValidVersion, createImplicitMap, emptyFunction, inArray, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
+var NODE_PATHS, Path, Q, assertValidVersion, createImplicitMap, emptyFunction, inArray, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
 
 assertValidVersion = require("assertValidVersion");
 
@@ -21,48 +21,38 @@ Q = require("q");
 module.exports = function(options) {
   var Module, mod, mods, moduleName, modulePath;
   Module = lotus.Module;
-  log.clear();
   modulePath = options._.shift();
   if (modulePath) {
     modulePath = Module.resolvePath(modulePath);
     moduleName = Path.relative(lotus.path, modulePath);
     mod = Module(moduleName);
-    return mod.parseDependencies().then(function() {
-      return printDependencies(mod);
-    }).then(function() {
+    return parseDependencies(mod).then(function() {
       return process.exit();
     }).done();
   } else {
     mods = Module.crawl(lotus.path);
-    return Q.all(sync.map(mods, function(mod) {
-      return mod.parseDependencies().then(function() {
-        return printDependencies(mod);
-      });
-    })).then(function() {
+    return Q.all(sync.map(mods, parseDependencies)).then(function() {
       return process.exit();
     }).done();
   }
 };
 
-createImplicitMap = function(mod) {
-  var config, dep, deps, i, len, results;
-  results = Object.create(null);
-  config = mod.config.lotus;
-  if (config) {
-    deps = config.implicitDependencies;
-    if (Array.isArray(deps)) {
-      for (i = 0, len = deps.length; i < len; i++) {
-        dep = deps[i];
-        results[dep] = true;
-      }
-    }
-  }
-  return results;
+parseDependencies = function(mod) {
+  return mod.parseDependencies().then(function() {
+    return printDependencies(mod);
+  }).fail(function(error) {
+    return throwFailure(error, {
+      mod: mod
+    });
+  });
 };
 
 printDependencies = function(mod) {
   var base, explicit, found, hasIssues, implicit, missing, missingKeys, promise, unexpected, unexpectedKeys, unused, unusedKeys;
   if (!mod.files) {
+    return false;
+  }
+  if (!Object.keys(mod.files).length) {
     return false;
   }
   explicit = (base = mod.config).dependencies != null ? base.dependencies : base.dependencies = {};
@@ -174,7 +164,7 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers, explicit) {
     return log.popIndent();
   });
   return Q.all(sync.map(depNames, function(depName) {
-    var version;
+    var base, config, implicit, version;
     log.moat(1);
     log.gray("What version of ");
     log.yellow(depName);
@@ -184,18 +174,18 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers, explicit) {
     if (version === null) {
       return;
     }
+    if (version === ".") {
+      config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
+      implicit = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
+      implicit.push(depName);
+      implicit.sort(function(a, b) {
+        return a > b;
+      });
+      mod.saveConfig();
+      return;
+    }
     return assertValidVersion(depName, version).then(function() {
-      var base, config, implicit;
-      if (version !== ".") {
-        explicit[depName] = version;
-      } else {
-        config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
-        implicit = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
-        implicit.push(depName);
-        implicit.sort(function(a, b) {
-          return a > b;
-        });
-      }
+      explicit[depName] = version;
       return mod.saveConfig();
     }).fail(function(error) {
       var failure;
@@ -233,6 +223,22 @@ printResults = function(title, deps, iterator) {
   }
   log.popIndent();
   return log.moat(1);
+};
+
+createImplicitMap = function(mod) {
+  var config, dep, deps, i, len, results;
+  results = Object.create(null);
+  config = mod.config.lotus;
+  if (config) {
+    deps = config.implicitDependencies;
+    if (Array.isArray(deps)) {
+      for (i = 0, len = deps.length; i < len; i++) {
+        dep = deps[i];
+        results[dep] = true;
+      }
+    }
+  }
+  return results;
 };
 
 //# sourceMappingURL=../../../map/src/methods/scan.map

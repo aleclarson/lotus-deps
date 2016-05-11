@@ -21,6 +21,6 @@ module.exports = (type) ->
         return @_parsingDependencies
 
       @_parsingDependencies = @read()
-
       .then (contents) =>
-        return @dependencies = findRequire.all contents
+        @dependencies = findRequire.all contents
+        return

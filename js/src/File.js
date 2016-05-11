@@ -22,7 +22,7 @@ module.exports = function(type) {
       }
       return this._parsingDependencies = this.read().then((function(_this) {
         return function(contents) {
-          return _this.dependencies = findRequire.all(contents);
+          _this.dependencies = findRequire.all(contents);
         };
       })(this));
     }

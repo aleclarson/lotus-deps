@@ -28,28 +28,32 @@ module.exports = (options) ->
 
   .then ->
 
-    mods = sync.filter mods, (mod) ->
-      { dependencies } = mod.config
-      return no unless isType dependencies, Object
-      return has dependencies, moduleName
+    deps = Object.create null
+    sync.each mods, (mod) ->
+      configDeps = mod.config.dependencies
+      return unless isType configDeps, Object
+      return unless has configDeps, moduleName
+      deps[mod.name] = configDeps[moduleName]
 
-    if mods.length
+    if Object.keys(deps).length
       log.moat 1
       log.gray "Which modules depend on "
       log.yellow moduleName
       log.gray "?"
       log.plusIndent 2
-      sync.each mods, (mod) ->
+      sync.each deps, (version, depName) ->
         log.moat 1
-        log.white mod.name
+        log.white depName
+        log.gray.dim ": "
+        log.gray version
+      log.popIndent()
+      log.moat 1
 
     else
       log.moat 1
       log.gray "No modules depend on "
       log.yellow moduleName
       log.gray "."
-
-    log.popIndent()
-    log.moat 1
+      log.moat 1
 
     process.exit()

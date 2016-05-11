@@ -16,21 +16,10 @@ module.exports = (type) ->
         return @_parsingDependencies
 
       @_parsingDependencies = @load [ "config" ]
-
+      .then => @crawl()
       .then =>
-
-        unless @dest
-          log.moat 1
-          log.yellow "Warning: "
-          log.white @name
-          log.moat 0
-          log.gray.dim "A valid 'dest' must exist before 'lotus-deps' can work!"
-          log.moat 1
-          return
-
-        @crawl()
-
-        .then =>
-          Q.all sync.reduce @files, [], (promises, file) ->
-            promises.push file.parseDependencies()
-            return promises
+        # Q.map @files, (file) ->
+        #   file.parseDependencies
+        Q.all sync.reduce @files, [], (promises, file) ->
+          promises.push file.parseDependencies()
+          return promises
