@@ -1,4 +1,6 @@
-var Q, has, sync;
+var Q, has, isType, sync;
+
+isType = require("isType");
 
 sync = require("sync");
 

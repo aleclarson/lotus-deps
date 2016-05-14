@@ -1,16 +1,14 @@
-var NODE_PATHS, Path, Q, assertValidVersion, createImplicitMap, emptyFunction, inArray, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
+var Path, Q, assert, assertValidVersion, createImplicitMap, emptyFunction, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
 
 assertValidVersion = require("assertValidVersion");
 
 emptyFunction = require("emptyFunction");
 
-NODE_PATHS = require("node-paths");
-
-inArray = require("in-array");
-
 syncFs = require("io/sync");
 
 prompt = require("prompt");
+
+assert = require("assert");
 
 sync = require("sync");
 
@@ -19,22 +17,29 @@ Path = require("path");
 Q = require("q");
 
 module.exports = function(options) {
-  var Module, mod, mods, moduleName, modulePath;
+  var Module, mod, mods, moduleName, modulePath, promise;
   Module = lotus.Module;
+  log.clear();
   modulePath = options._.shift();
   if (modulePath) {
     modulePath = Module.resolvePath(modulePath);
     moduleName = Path.relative(lotus.path, modulePath);
     mod = Module(moduleName);
-    return parseDependencies(mod).then(function() {
-      return process.exit();
-    }).done();
+    promise = parseDependencies(mod);
   } else {
     mods = Module.crawl(lotus.path);
-    return Q.all(sync.map(mods, parseDependencies)).then(function() {
-      return process.exit();
-    }).done();
+    promise = sync.reduce(mods, Q(), function(promise, mod) {
+      return promise.then(function() {
+        return parseDependencies(mod);
+      });
+    });
   }
+  return promise.then(function() {
+    log.moat(1);
+    log.green("Finished without errors!");
+    log.moat(1);
+    return process.exit();
+  }).done();
 };
 
 parseDependencies = function(mod) {
@@ -48,18 +53,18 @@ parseDependencies = function(mod) {
 };
 
 printDependencies = function(mod) {
-  var base, explicit, found, hasIssues, implicit, missing, missingKeys, promise, unexpected, unexpectedKeys, unused, unusedKeys;
+  var base, explicitDeps, foundDeps, hasIssues, implicitDeps, missingDepPaths, missingDeps, unexpectedDepNames, unexpectedDeps, unusedDepNames, unusedDeps;
   if (!mod.files) {
-    return false;
+    return;
   }
   if (!Object.keys(mod.files).length) {
-    return false;
+    return;
   }
-  explicit = (base = mod.config).dependencies != null ? base.dependencies : base.dependencies = {};
-  implicit = createImplicitMap(mod);
-  unexpected = Object.create(null);
-  missing = Object.create(null);
-  found = Object.create(null);
+  explicitDeps = (base = mod.config).dependencies != null ? base.dependencies : base.dependencies = {};
+  implicitDeps = createImplicitMap(mod);
+  unexpectedDeps = Object.create(null);
+  missingDeps = Object.create(null);
+  foundDeps = Object.create(null);
   sync.each(mod.files, function(file) {
     return sync.each(file.dependencies, function(dep) {
       var depPath, files, parts;
@@ -68,7 +73,7 @@ printDependencies = function(mod) {
         if (depPath) {
           return;
         }
-        files = missing[dep] != null ? missing[dep] : missing[dep] = [];
+        files = missingDeps[dep] != null ? missingDeps[dep] : missingDeps[dep] = [];
         files.push(file);
         return;
       }
@@ -76,49 +81,53 @@ printDependencies = function(mod) {
       if (parts.length) {
         dep = parts[0];
       }
-      if (explicit[dep] || implicit[dep] || inArray(NODE_PATHS, dep)) {
-        files = found[dep] != null ? found[dep] : found[dep] = [];
+      if (explicitDeps[dep] || implicitDeps[dep]) {
+        files = foundDeps[dep] != null ? foundDeps[dep] : foundDeps[dep] = [];
         files.push(file);
         return;
       }
-      files = unexpected[dep] != null ? unexpected[dep] : unexpected[dep] = [];
+      files = unexpectedDeps[dep] != null ? unexpectedDeps[dep] : unexpectedDeps[dep] = [];
       return files.push(file);
     });
   });
-  unused = Object.create(null);
-  sync.each(explicit, function(_, dep) {
-    if (found[dep]) {
+  unusedDeps = Object.create(null);
+  sync.each(explicitDeps, function(_, dep) {
+    if (foundDeps[dep]) {
       return;
     }
-    return unused[dep] = true;
+    return unusedDeps[dep] = true;
   });
-  unexpectedKeys = Object.keys(unexpected);
-  missingKeys = Object.keys(missing);
-  unusedKeys = Object.keys(unused);
-  hasIssues = (unexpectedKeys.length > 0) || (missingKeys.length > 0) || (unusedKeys.length > 0);
+  unexpectedDepNames = Object.keys(unexpectedDeps);
+  missingDepPaths = Object.keys(missingDeps);
+  unusedDepNames = Object.keys(unusedDeps);
+  hasIssues = (unexpectedDepNames.length > 0) || (missingDepPaths.length > 0) || (unusedDepNames.length > 0);
   log.moat(1);
   log.bold(mod.name);
   log.plusIndent(2);
   if (hasIssues) {
-    promise = printUnexpectedAbsolutes(mod, unexpectedKeys, unexpected, explicit);
-    printUnusedAbsolutes(mod, unusedKeys, explicit, implicit);
-    printMissingRelatives(mod, missingKeys, missing);
-  } else {
-    log.moat(1);
-    log.green.dim("All dependencies look correct!");
-    promise = Q();
+    return Q["try"](function() {
+      return printUnexpectedAbsolutes(mod, unexpectedDepNames, unexpectedDeps);
+    }).then(function() {
+      printUnusedAbsolutes(mod, unusedDepNames, implicitDeps);
+      printMissingRelatives(mod, missingDepPaths, missingDeps);
+      log.popIndent();
+      return log.moat(1);
+    });
   }
-  log.popIndent();
   log.moat(1);
-  return promise;
+  log.green.dim("All dependencies look correct!");
+  log.popIndent();
+  return log.moat(1);
 };
 
-printUnusedAbsolutes = function(mod, depNames, explicit, implicit) {
+printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
+  var dependencies;
   if (!depNames.length) {
     return;
   }
   printResults("Unused absolutes: ", depNames);
-  return sync.each(depNames, function(depName) {
+  dependencies = mod.config.dependencies;
+  sync.each(depNames, function(depName) {
     log.moat(1);
     log.gray("Should we remove ");
     log.yellow(depName);
@@ -128,13 +137,13 @@ printUnusedAbsolutes = function(mod, depNames, explicit, implicit) {
     })) {
       return;
     }
-    if (explicit[depName]) {
-      delete explicit[depName];
+    if (dependencies[depName]) {
+      return delete dependencies[depName];
     } else {
-      delete implicit[depName];
+      return delete implicitDeps[depName];
     }
-    return mod.saveConfig();
   });
+  return mod.saveConfig();
 };
 
 printMissingRelatives = function(mod, depNames, dependers) {
@@ -151,9 +160,10 @@ printMissingRelatives = function(mod, depNames, dependers) {
   });
 };
 
-printUnexpectedAbsolutes = function(mod, depNames, dependers, explicit) {
+printUnexpectedAbsolutes = function(mod, depNames, dependers) {
+  var promise;
   if (!depNames.length) {
-    return Q();
+    return;
   }
   printResults("Unexpected absolutes: ", depNames, function(depName) {
     log.plusIndent(2);
@@ -163,46 +173,58 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers, explicit) {
     });
     return log.popIndent();
   });
-  return Q.all(sync.map(depNames, function(depName) {
-    var base, config, implicit, version;
+  promise = Q();
+  sync.each(depNames, function(depName) {
+    var base, config, implicitDeps, ref, user, version;
     log.moat(1);
-    log.gray("What version of ");
+    log.gray("Which version of ");
     log.yellow(depName);
-    log.gray(" do we depend on?");
-    log.gray.dim(" (enter '.' to save implicitly)");
+    log.gray(" should be depended on?");
     version = prompt.sync();
     if (version === null) {
       return;
     }
     if (version === ".") {
       config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
-      implicit = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
-      implicit.push(depName);
-      implicit.sort(function(a, b) {
+      implicitDeps = config.implicitDependencies != null ? config.implicitDependencies : config.implicitDependencies = [];
+      implicitDeps.push(depName);
+      implicitDeps.sort(function(a, b) {
         return a > b;
       });
       mod.saveConfig();
       return;
     }
-    return assertValidVersion(depName, version).then(function() {
-      explicit[depName] = version;
-      return mod.saveConfig();
-    }).fail(function(error) {
-      var failure;
-      failure = Failure(error);
-      log.moat(1);
-      log.red(error.constructor.name + ": ");
-      log.white(error.message);
-      log.gray.dim(" { key: '" + depName + "', value: '" + version + "' }");
-      if (error.format !== "simple") {
+    if (version[0] === "#") {
+      user = (ref = lotus.config.github) != null ? ref.username : void 0;
+      assert(user, "Must define 'github.username' in 'lotus.json' first!");
+      version = user + "/" + depName + version;
+    }
+    if (version[0] === "@") {
+      version = version.slice(1).split("#");
+      version = version[0] + "/" + depName + "#" + version;
+    }
+    return promise = promise.then(function() {
+      return assertValidVersion(depName, version).then(function() {
+        mod.config.dependencies[depName] = version;
+        return mod.saveConfig();
+      }).fail(function(error) {
+        var failure;
+        failure = Failure(error);
         log.moat(1);
-        log.plusIndent(2);
-        log.gray.dim(Failure(error).stacks.format());
-        log.popIndent();
-      }
-      return log.moat(1);
+        log.red(error.constructor.name + ": ");
+        log.white(error.message);
+        log.gray.dim(" { key: '" + depName + "', value: '" + version + "' }");
+        if (error.format !== "simple") {
+          log.moat(1);
+          log.plusIndent(2);
+          log.gray.dim(Failure(error).stacks.format());
+          log.popIndent();
+        }
+        return log.moat(1);
+      });
     });
-  }));
+  });
+  return promise;
 };
 
 printResults = function(title, deps, iterator) {

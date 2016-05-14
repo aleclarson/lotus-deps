@@ -1,4 +1,5 @@
 
+isType = require "isType"
 sync = require "sync"
 has = require "has"
 Q = require "q"
