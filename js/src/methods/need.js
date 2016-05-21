@@ -1,10 +1,12 @@
-var Q, has, isType, sync;
+var Q, has, isType, log, sync;
 
 isType = require("isType");
 
 sync = require("sync");
 
 has = require("has");
+
+log = require("log");
 
 Q = require("q");
 
@@ -21,7 +23,7 @@ module.exports = function(options) {
     log.gray.dim("lotus deps need ");
     log.gray("[moduleName]");
     log.moat(1);
-    process.exit();
+    return;
   }
   mods = Module.crawl(lotus.path);
   return Q.all(sync.map(mods, function(mod) {
@@ -53,15 +55,14 @@ module.exports = function(options) {
         return log.gray(version);
       });
       log.popIndent();
-      log.moat(1);
+      return log.moat(1);
     } else {
       log.moat(1);
       log.gray("No modules depend on ");
       log.yellow(moduleName);
       log.gray(".");
-      log.moat(1);
+      return log.moat(1);
     }
-    return process.exit();
   });
 };
 

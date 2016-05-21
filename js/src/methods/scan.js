@@ -1,4 +1,6 @@
-var Path, Q, assert, assertValidVersion, createImplicitMap, emptyFunction, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
+var Failure, Path, Q, assert, assertValidVersion, createImplicitMap, emptyFunction, has, log, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs, throwFailure;
+
+throwFailure = (Failure = require("failure")).throwFailure;
 
 assertValidVersion = require("assertValidVersion");
 
@@ -14,10 +16,14 @@ sync = require("sync");
 
 Path = require("path");
 
+log = require("log");
+
+has = require("has");
+
 Q = require("q");
 
 module.exports = function(options) {
-  var Module, mod, mods, moduleName, modulePath, promise;
+  var Module, mod, mods, moduleName, modulePath;
   Module = lotus.Module;
   log.clear();
   modulePath = options._.shift();
@@ -25,21 +31,14 @@ module.exports = function(options) {
     modulePath = Module.resolvePath(modulePath);
     moduleName = Path.relative(lotus.path, modulePath);
     mod = Module(moduleName);
-    promise = parseDependencies(mod);
-  } else {
-    mods = Module.crawl(lotus.path);
-    promise = sync.reduce(mods, Q(), function(promise, mod) {
-      return promise.then(function() {
-        return parseDependencies(mod);
-      });
-    });
+    return parseDependencies(mod);
   }
-  return promise.then(function() {
-    log.moat(1);
-    log.green("Finished without errors!");
-    log.moat(1);
-    return process.exit();
-  }).done();
+  mods = Module.crawl(lotus.path);
+  return sync.reduce(mods, Q(), function(promise, mod) {
+    return promise.then(function() {
+      return parseDependencies(mod);
+    });
+  });
 };
 
 parseDependencies = function(mod) {
@@ -128,16 +127,20 @@ printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
   printResults("Unused absolutes: ", depNames);
   dependencies = mod.config.dependencies;
   sync.each(depNames, function(depName) {
+    var shouldRemove;
     log.moat(1);
     log.gray("Should we remove ");
     log.yellow(depName);
     log.gray("?");
-    if (!prompt.sync({
-      parseBool: true
-    })) {
+    try {
+      shouldRemove = prompt.sync({
+        parseBool: true
+      });
+    } catch (error1) {}
+    if (!shouldRemove) {
       return;
     }
-    if (dependencies[depName]) {
+    if (has(dependencies, depName)) {
       return delete dependencies[depName];
     } else {
       return delete implicitDeps[depName];
@@ -175,13 +178,21 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
   });
   promise = Q();
   sync.each(depNames, function(depName) {
-    var base, config, implicitDeps, ref, user, version;
+    var base, config, error, implicitDeps, ref, user, version;
     log.moat(1);
     log.gray("Which version of ");
     log.yellow(depName);
     log.gray(" should be depended on?");
-    version = prompt.sync();
-    if (version === null) {
+    try {
+      version = prompt.sync();
+    } catch (error1) {
+      error = error1;
+      throwFailure(error, {
+        mod: mod,
+        depName: depName
+      });
+    }
+    if (version == null) {
       return;
     }
     if (version === ".") {
@@ -208,12 +219,15 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
         mod.config.dependencies[depName] = version;
         return mod.saveConfig();
       }).fail(function(error) {
-        var failure;
-        failure = Failure(error);
         log.moat(1);
+        log.gray.dim("depName = ");
+        log.white(depName);
+        log.moat(0);
+        log.gray.dim("version = ");
+        log.white(version);
+        log.moat(0);
         log.red(error.constructor.name + ": ");
         log.white(error.message);
-        log.gray.dim(" { key: '" + depName + "', value: '" + version + "' }");
         if (error.format !== "simple") {
           log.moat(1);
           log.plusIndent(2);

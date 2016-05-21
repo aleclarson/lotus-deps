@@ -1,4 +1,6 @@
 
+{ throwFailure } = Failure = require "failure"
+
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
 syncFs = require "io/sync"
@@ -6,6 +8,8 @@ prompt = require "prompt"
 assert = require "assert"
 sync = require "sync"
 Path = require "path"
+log = require "log"
+has = require "has"
 Q = require "q"
 
 module.exports = (options) ->
@@ -20,20 +24,11 @@ module.exports = (options) ->
     modulePath = Module.resolvePath modulePath
     moduleName = Path.relative lotus.path, modulePath
     mod = Module moduleName
-    promise = parseDependencies mod
+    return parseDependencies mod
 
-  else
-    mods = Module.crawl lotus.path
-    promise = sync.reduce mods, Q(), (promise, mod) ->
-      promise.then -> parseDependencies mod
-
-  promise
-    .then ->
-      log.moat 1
-      log.green "Finished without errors!"
-      log.moat 1
-      process.exit()
-    .done()
+  mods = Module.crawl lotus.path
+  return sync.reduce mods, Q(), (promise, mod) ->
+    promise.then -> parseDependencies mod
 
 parseDependencies = (mod) ->
   mod.parseDependencies()
@@ -127,8 +122,9 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
     log.gray "Should we remove "
     log.yellow depName
     log.gray "?"
-    return unless prompt.sync { parseBool: yes }
-    if dependencies[depName]
+    try shouldRemove = prompt.sync { parseBool: yes }
+    return if not shouldRemove
+    if has dependencies, depName
       delete dependencies[depName]
     else delete implicitDeps[depName]
 
@@ -165,8 +161,10 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
     log.yellow depName
     log.gray " should be depended on?"
 
-    version = prompt.sync()
-    return if version is null
+    try version = prompt.sync()
+    catch error then throwFailure error, { mod, depName }
+
+    return if not version?
 
     if version is "."
       config = mod.config.lotus ?= {}
@@ -194,11 +192,15 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
         mod.saveConfig()
 
       .fail (error) ->
-        failure = Failure error
         log.moat 1
+        log.gray.dim "depName = "
+        log.white depName
+        log.moat 0
+        log.gray.dim "version = "
+        log.white version
+        log.moat 0
         log.red error.constructor.name + ": "
         log.white error.message
-        log.gray.dim " { key: '#{depName}', value: '#{version}' }"
         if error.format isnt "simple"
           log.moat 1
           log.plusIndent 2

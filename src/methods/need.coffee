@@ -2,6 +2,7 @@
 isType = require "isType"
 sync = require "sync"
 has = require "has"
+log = require "log"
 Q = require "q"
 
 module.exports = (options) ->
@@ -20,7 +21,7 @@ module.exports = (options) ->
     log.gray.dim "lotus deps need "
     log.gray "[moduleName]"
     log.moat 1
-    process.exit()
+    return
 
   mods = Module.crawl lotus.path
 
@@ -28,7 +29,6 @@ module.exports = (options) ->
     mod.load [ "config" ]
 
   .then ->
-
     deps = Object.create null
     sync.each mods, (mod) ->
       configDeps = mod.config.dependencies
@@ -56,5 +56,3 @@ module.exports = (options) ->
       log.yellow moduleName
       log.gray "."
       log.moat 1
-
-    process.exit()
