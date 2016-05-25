@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "remove.js",
+  "sourceRoot": "../../../src/methods",
+  "sources": [
+    "remove.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

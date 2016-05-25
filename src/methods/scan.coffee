@@ -162,8 +162,6 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
     log.gray " should be depended on?"
 
     try version = prompt.sync()
-    catch error then throwFailure error, { mod, depName }
-
     return if not version?
 
     if version is "."

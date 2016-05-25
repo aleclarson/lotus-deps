@@ -178,20 +178,14 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
   });
   promise = Q();
   sync.each(depNames, function(depName) {
-    var base, config, error, implicitDeps, ref, user, version;
+    var base, config, implicitDeps, ref, user, version;
     log.moat(1);
     log.gray("Which version of ");
     log.yellow(depName);
     log.gray(" should be depended on?");
     try {
       version = prompt.sync();
-    } catch (error1) {
-      error = error1;
-      throwFailure(error, {
-        mod: mod,
-        depName: depName
-      });
-    }
+    } catch (error1) {}
     if (version == null) {
       return;
     }

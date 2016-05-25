@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "install.js",
+  "sourceRoot": "../../../src/methods",
+  "sources": [
+    "install.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}
