@@ -1,7 +1,7 @@
 
-syncFs = require "io/sync"
+Promise = require "Promise"
 Finder = require "finder"
-Q = require "q"
+syncFs = require "io/sync"
 
 module.exports = (type) ->
 
@@ -17,7 +17,7 @@ module.exports = (type) ->
 
     parseDependencies: ->
 
-      unless Q.isRejected @_parsingDependencies
+      unless Promise.isRejected @_parsingDependencies
         return @_parsingDependencies
 
       @_parsingDependencies = @read()

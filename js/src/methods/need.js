@@ -1,4 +1,6 @@
-var Q, has, isType, log, sync;
+var Promise, has, isType, log, sync;
+
+Promise = require("Promise");
 
 isType = require("isType");
 
@@ -7,8 +9,6 @@ sync = require("sync");
 has = require("has");
 
 log = require("log");
-
-Q = require("q");
 
 module.exports = function(options) {
   var Module, mods, moduleName;
@@ -26,9 +26,9 @@ module.exports = function(options) {
     return;
   }
   mods = Module.crawl(lotus.path);
-  return Q.all(sync.map(mods, function(mod) {
+  return Promise.map(mods, function(mod) {
     return mod.load(["config"]);
-  })).then(function() {
+  }).then(function() {
     var deps;
     deps = Object.create(null);
     sync.each(mods, function(mod) {

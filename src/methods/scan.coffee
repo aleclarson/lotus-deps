@@ -3,6 +3,7 @@
 
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
+Promise = require "Promise"
 syncFs = require "io/sync"
 prompt = require "prompt"
 assert = require "assert"
@@ -10,7 +11,6 @@ sync = require "sync"
 Path = require "path"
 log = require "log"
 has = require "has"
-Q = require "q"
 
 module.exports = (options) ->
 
@@ -27,8 +27,8 @@ module.exports = (options) ->
     return parseDependencies mod
 
   mods = Module.crawl lotus.path
-  return sync.reduce mods, Q(), (promise, mod) ->
-    promise.then -> parseDependencies mod
+  Promise.chain mods, (mod) ->
+    parseDependencies mod
 
 parseDependencies = (mod) ->
   mod.parseDependencies()
@@ -97,7 +97,7 @@ printDependencies = (mod) ->
   log.plusIndent 2
 
   if hasIssues
-    return Q.try ->
+    return Promise.try ->
       printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
     .then ->
       printUnusedAbsolutes mod, unusedDepNames, implicitDeps
@@ -152,9 +152,7 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
       log.gray.dim Path.relative file.module.path, file.path
     log.popIndent()
 
-  promise = Q()
-
-  sync.each depNames, (depName) ->
+  return Promise.chain depNames, (depName) ->
 
     log.moat 1
     log.gray "Which version of "
@@ -181,32 +179,29 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
       version = version.slice(1).split "#"
       version = version[0] + "/" + depName + "#" + version
 
-    promise = promise.then ->
+    assertValidVersion depName, version
 
-      assertValidVersion depName, version
+    .then ->
+      # FIXME: The line below throws when 'mod.config.dependencies' does not exist.
+      mod.config.dependencies[depName] = version
+      mod.saveConfig()
 
-      .then ->
-        mod.config.dependencies[depName] = version
-        mod.saveConfig()
-
-      .fail (error) ->
+    .fail (error) ->
+      log.moat 1
+      log.gray.dim "depName = "
+      log.white depName
+      log.moat 0
+      log.gray.dim "version = "
+      log.white version
+      log.moat 0
+      log.red error.constructor.name + ": "
+      log.white error.message
+      if error.format isnt "simple"
         log.moat 1
-        log.gray.dim "depName = "
-        log.white depName
-        log.moat 0
-        log.gray.dim "version = "
-        log.white version
-        log.moat 0
-        log.red error.constructor.name + ": "
-        log.white error.message
-        if error.format isnt "simple"
-          log.moat 1
-          log.plusIndent 2
-          log.gray.dim Failure(error).stacks.format()
-          log.popIndent()
-        log.moat 1
-
-  return promise
+        log.plusIndent 2
+        log.gray.dim Failure(error).stacks.format()
+        log.popIndent()
+      log.moat 1
 
 printResults = (title, deps, iterator = emptyFunction) ->
 

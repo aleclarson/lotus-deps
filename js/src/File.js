@@ -1,10 +1,10 @@
-var Finder, Q, syncFs;
+var Finder, Promise, syncFs;
 
-syncFs = require("io/sync");
+Promise = require("Promise");
 
 Finder = require("finder");
 
-Q = require("q");
+syncFs = require("io/sync");
 
 module.exports = function(type) {
   var findRequire;
@@ -17,7 +17,7 @@ module.exports = function(type) {
   });
   return type.defineMethods({
     parseDependencies: function() {
-      if (!Q.isRejected(this._parsingDependencies)) {
+      if (!Promise.isRejected(this._parsingDependencies)) {
         return this._parsingDependencies;
       }
       return this._parsingDependencies = this.read().then((function(_this) {

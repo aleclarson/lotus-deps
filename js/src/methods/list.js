@@ -1,12 +1,12 @@
-var Path, Q, log, printDependencies, sync;
+var Path, Promise, log, printDependencies, sync;
+
+Promise = require("Promise");
 
 Path = require("path");
 
 sync = require("sync");
 
 log = require("log");
-
-Q = require("q");
 
 module.exports = function(options) {
   var Module, mod, mods, moduleName, modulePath;
@@ -22,11 +22,9 @@ module.exports = function(options) {
     });
   }
   mods = Module.crawl(lotus.path);
-  return sync.reduce(mods, Q(), function(promise, mod) {
-    return promise.then(function() {
-      return mod.parseDependencies().then(function() {
-        return printDependencies(mod);
-      });
+  return Promise.chain(mods, function(mod) {
+    return mod.parseDependencies().then(function() {
+      return printDependencies(mod);
     });
   });
 };

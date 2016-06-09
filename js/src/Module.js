@@ -1,8 +1,8 @@
-var Q, sync;
+var Promise, sync;
+
+Promise = require("Promise");
 
 sync = require("sync");
-
-Q = require("q");
 
 module.exports = function(type) {
   type.defineValues({
@@ -10,7 +10,7 @@ module.exports = function(type) {
   });
   return type.defineMethods({
     parseDependencies: function() {
-      if (!Q.isRejected(this._parsingDependencies)) {
+      if (!Promise.isRejected(this._parsingDependencies)) {
         return this._parsingDependencies;
       }
       return this._parsingDependencies = this.load(["config"]).then((function(_this) {
@@ -19,10 +19,9 @@ module.exports = function(type) {
         };
       })(this)).then((function(_this) {
         return function() {
-          return Q.all(sync.reduce(_this.files, [], function(promises, file) {
-            promises.push(file.parseDependencies());
-            return promises;
-          }));
+          return Promise.map(_this.files, function(file) {
+            return file.parseDependencies();
+          });
         };
       })(this));
     }

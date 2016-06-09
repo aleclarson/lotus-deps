@@ -1,8 +1,8 @@
 
+Promise = require "Promise"
 Path = require "path"
 sync = require "sync"
 log = require "log"
-Q = require "q"
 
 module.exports = (options) ->
 
@@ -20,10 +20,9 @@ module.exports = (options) ->
     .then -> printDependencies mod
 
   mods = Module.crawl lotus.path
-  sync.reduce mods, Q(), (promise, mod) ->
-    promise.then ->
-      mod.parseDependencies()
-      .then -> printDependencies mod
+  Promise.chain mods, (mod) ->
+    mod.parseDependencies()
+    .then -> printDependencies mod
 
 printDependencies = (mod) ->
 

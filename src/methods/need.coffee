@@ -1,9 +1,9 @@
 
+Promise = require "Promise"
 isType = require "isType"
 sync = require "sync"
 has = require "has"
 log = require "log"
-Q = require "q"
 
 module.exports = (options) ->
 
@@ -25,7 +25,7 @@ module.exports = (options) ->
 
   mods = Module.crawl lotus.path
 
-  Q.all sync.map mods, (mod) ->
+  Promise.map mods, (mod) ->
     mod.load [ "config" ]
 
   .then ->
