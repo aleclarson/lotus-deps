@@ -1,0 +1,243 @@
+
+{ throwFailure } = Failure = require "failure"
+
+assertValidVersion = require "assertValidVersion"
+emptyFunction = require "emptyFunction"
+parseBool = require "parse-bool"
+Promise = require "Promise"
+syncFs = require "io/sync"
+prompt = require "prompt"
+assert = require "assert"
+sync = require "sync"
+Path = require "path"
+log = require "log"
+has = require "has"
+
+module.exports = (options) ->
+
+  if moduleName = options._.shift()
+    return lotus.Module.load moduleName
+    .then parseDependencies
+
+  lotus.Module.crawl lotus.path
+  .then (mods) ->
+    Promise.chain mods, parseDependencies
+
+parseDependencies = (mod) ->
+  mod.parseDependencies()
+  .then -> printDependencies mod
+  .fail (error) -> throwFailure error, { mod }
+
+printDependencies = (mod) ->
+
+  return unless mod.files
+  return unless Object.keys(mod.files).length
+
+  # The map of explicit dependencies in 'package.json'
+  explicitDeps = mod.config.dependencies ?= {}
+
+  # The list of implicit dependencies in 'package.json'
+  implicitDeps = createImplicitMap mod
+
+  # Absolute dependencies that were imported, but are not listed in 'package.json'
+  unexpectedDeps = Object.create null
+
+  # Relative dependencies that were imported, but do not exist
+  missingDeps = Object.create null
+
+  # Absolute dependencies that were imported and are already listed in 'package.json'
+  foundDeps = Object.create null
+
+  sync.each mod.files, (file) ->
+
+    sync.each file.dependencies, (dep) ->
+
+      if dep[0] is "."
+        depPath = lotus.resolve dep, file.path
+        return if depPath
+        files = missingDeps[dep] ?= []
+        files.push file
+        return
+
+      parts = dep.split "/"
+      dep = parts[0] if parts.length
+
+      if explicitDeps[dep] or implicitDeps[dep]
+        files = foundDeps[dep] ?= []
+        files.push file
+        return
+
+      files = unexpectedDeps[dep] ?= []
+      files.push file
+
+  # Absolute dependencies that are never imported.
+  unusedDeps = Object.create null
+  sync.each explicitDeps, (_, dep) ->
+    return if foundDeps[dep]
+    unusedDeps[dep] = yes
+
+  unexpectedDepNames = Object.keys unexpectedDeps
+  missingDepPaths = Object.keys missingDeps
+  unusedDepNames = Object.keys unusedDeps
+
+  hasIssues =
+    (unexpectedDepNames.length > 0) or
+    (missingDepPaths.length > 0) or
+    (unusedDepNames.length > 0)
+
+  log.moat 1
+  log.bold mod.name
+  log.plusIndent 2
+
+  if hasIssues
+    return Promise.try ->
+      printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
+    .then ->
+      printUnusedAbsolutes mod, unusedDepNames, implicitDeps
+      printMissingRelatives mod, missingDepPaths, missingDeps
+      log.popIndent()
+      log.moat 1
+
+  log.moat 1
+  log.green.dim "All dependencies look correct!"
+  log.popIndent()
+  log.moat 1
+
+printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
+
+  return unless depNames.length
+
+  printResults "Unused absolutes: ", depNames
+
+  { dependencies } = mod.config
+  return Promise.chain depNames, (depName) ->
+
+    log.moat 1
+    log.gray "Should we remove "
+    log.yellow depName
+    log.gray "?"
+
+    try shouldRemove = prompt.sync()
+
+    if shouldRemove is "s"
+      throw Error "skip dependency"
+
+    shouldRemove = parseBool shouldRemove
+    return if not shouldRemove
+
+    if has dependencies, depName
+      delete dependencies[depName]
+
+    else
+      delete implicitDeps[depName]
+
+  .fail (error) ->
+    return if error.message is "skip dependency"
+    throw error
+
+  .then -> mod.saveConfig()
+
+printMissingRelatives = (mod, depNames, dependers) ->
+
+  return unless depNames.length
+
+  printResults "Missing relatives: ", depNames, (depName) ->
+    log.plusIndent 2
+    sync.each dependers[depName], (file) ->
+      log.moat 0
+      log.gray.dim Path.relative file.module.path, file.path
+    log.popIndent()
+
+printUnexpectedAbsolutes = (mod, depNames, dependers) ->
+
+  return unless depNames.length
+
+  printResults "Unexpected absolutes: ", depNames, (depName) ->
+    log.plusIndent 2
+    sync.each dependers[depName], (file) ->
+      log.moat 0
+      log.gray.dim Path.relative file.module.path, file.path
+    log.popIndent()
+
+  return Promise.chain depNames, (depName) ->
+
+    log.moat 1
+    log.gray "Which version of "
+    log.yellow depName
+    log.gray " should be depended on?"
+
+    try version = prompt.sync()
+    return if not version?
+
+    if version is "s"
+      throw Error "skip dependency"
+
+    if version is "."
+      config = mod.config.lotus ?= {}
+      implicitDeps = config.implicitDependencies ?= []
+      implicitDeps.push depName
+      implicitDeps.sort (a, b) -> a > b # sorted by ascending
+      mod.saveConfig()
+      return
+
+    if version[0] is "#"
+      user = lotus.config.github?.username
+      assert user, "Must define 'github.username' in 'lotus.json' first!"
+      version = user + "/" + depName + version
+
+    if version[0] is "@"
+      version = version.slice(1).split "#"
+      version = version[0] + "/" + depName + "#" + version
+
+    assertValidVersion depName, version
+
+    .then ->
+      # FIXME: The line below throws when 'mod.config.dependencies' does not exist.
+      mod.config.dependencies[depName] = version
+      mod.saveConfig()
+
+    .fail (error) ->
+      log.moat 1
+      log.gray.dim "depName = "
+      log.white depName
+      log.moat 0
+      log.gray.dim "version = "
+      log.white version
+      log.moat 0
+      log.red error.constructor.name + ": "
+      log.white error.message
+      if error.format isnt "simple"
+        log.moat 1
+        log.plusIndent 2
+        log.gray.dim Failure(error).stacks.format()
+        log.popIndent()
+      log.moat 1
+
+  .fail (error) ->
+    return if error.message is "skip dependency"
+    throw error
+
+printResults = (title, deps, iterator = emptyFunction) ->
+
+  log.moat 1
+  log.yellow title
+  log.plusIndent 2
+
+  for dep in deps
+    log.moat 1
+    log.white dep
+    log.moat 0
+    iterator dep
+    log.moat 1
+
+  log.popIndent()
+  log.moat 1
+
+createImplicitMap = (mod) ->
+  results = Object.create null
+  config = mod.config.lotus
+  if config
+    deps = config.implicitDependencies
+    if Array.isArray deps
+      results[dep] = yes for dep in deps
+  return results

@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "outdated.js",
+  "sourceRoot": "../../../src/methods",
+  "sources": [
+    "outdated.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}
