@@ -7,8 +7,6 @@ log = require "log"
 
 module.exports = (options) ->
 
-  { Module } = lotus
-
   log.clear()
 
   moduleName = options._.shift()
@@ -23,10 +21,11 @@ module.exports = (options) ->
     log.moat 1
     return
 
-  mods = Module.crawl lotus.path
+  lotus.Module.crawl lotus.path
 
-  Promise.map mods, (mod) ->
-    mod.load [ "config" ]
+  .then (mods) ->
+    Promise.map mods, (mod) ->
+      mod.load [ "config" ]
 
   .then ->
     deps = Object.create null

@@ -11,8 +11,7 @@ has = require("has");
 log = require("log");
 
 module.exports = function(options) {
-  var Module, mods, moduleName;
-  Module = lotus.Module;
+  var moduleName;
   log.clear();
   moduleName = options._.shift();
   if (!isType(moduleName, String)) {
@@ -25,9 +24,10 @@ module.exports = function(options) {
     log.moat(1);
     return;
   }
-  mods = Module.crawl(lotus.path);
-  return Promise.map(mods, function(mod) {
-    return mod.load(["config"]);
+  return lotus.Module.crawl(lotus.path).then(function(mods) {
+    return Promise.map(mods, function(mod) {
+      return mod.load(["config"]);
+    });
   }).then(function() {
     var deps;
     deps = Object.create(null);

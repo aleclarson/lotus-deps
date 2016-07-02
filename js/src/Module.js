@@ -1,6 +1,8 @@
-var Promise, sync;
+var Promise, semver, sync;
 
 Promise = require("Promise");
+
+semver = require("node-semver");
 
 sync = require("sync");
 
@@ -9,13 +11,13 @@ module.exports = function(type) {
     _parsingDependencies: null
   });
   return type.defineMethods({
-    parseDependencies: function() {
+    parseDependencies: function(options) {
       if (!Promise.isRejected(this._parsingDependencies)) {
         return this._parsingDependencies;
       }
       return this._parsingDependencies = this.load(["config"]).then((function(_this) {
         return function() {
-          return _this.crawl();
+          return _this.crawl(options);
         };
       })(this)).then((function(_this) {
         return function() {

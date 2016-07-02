@@ -6,23 +6,17 @@ log = require "log"
 
 module.exports = (options) ->
 
-  { Module } = lotus
+  if moduleName = options._.shift()
+    return lotus.Module.load moduleName
+    .then (module) ->
+      module.parseDependencies()
+      .then -> printDependencies module
 
-  log.clear()
-
-  modulePath = options._.shift()
-
-  if modulePath
-    modulePath = Module.resolvePath modulePath
-    moduleName = Path.basename modulePath
-    mod = Module moduleName
-    return mod.parseDependencies()
-    .then -> printDependencies mod
-
-  mods = Module.crawl lotus.path
-  Promise.chain mods, (mod) ->
-    mod.parseDependencies()
-    .then -> printDependencies mod
+  lotus.Module.crawl lotus.path
+  .then (mods) ->
+    Promise.chain mods, (module) ->
+      module.parseDependencies()
+      .then -> printDependencies module
 
 printDependencies = (mod) ->
 

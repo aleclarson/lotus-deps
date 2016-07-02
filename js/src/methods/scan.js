@@ -1,10 +1,12 @@
-var Failure, Path, Promise, assert, assertValidVersion, createImplicitMap, emptyFunction, has, log, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs, throwFailure;
+var Failure, Path, Promise, assert, assertValidVersion, createImplicitMap, emptyFunction, has, log, parseBool, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs, throwFailure;
 
 throwFailure = (Failure = require("failure")).throwFailure;
 
 assertValidVersion = require("assertValidVersion");
 
 emptyFunction = require("emptyFunction");
+
+parseBool = require("parse-bool");
 
 Promise = require("Promise");
 
@@ -23,19 +25,12 @@ log = require("log");
 has = require("has");
 
 module.exports = function(options) {
-  var Module, mod, mods, moduleName, modulePath;
-  Module = lotus.Module;
-  log.clear();
-  modulePath = options._.shift();
-  if (modulePath) {
-    modulePath = Module.resolvePath(modulePath);
-    moduleName = Path.relative(lotus.path, modulePath);
-    mod = Module(moduleName);
-    return parseDependencies(mod);
+  var moduleName;
+  if (moduleName = options._.shift()) {
+    return lotus.Module.load(moduleName).then(parseDependencies);
   }
-  mods = Module.crawl(lotus.path);
-  return Promise.chain(mods, function(mod) {
-    return parseDependencies(mod);
+  return lotus.Module.crawl(lotus.path).then(function(mods) {
+    return Promise.chain(mods, parseDependencies);
   });
 };
 
@@ -124,17 +119,19 @@ printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
   }
   printResults("Unused absolutes: ", depNames);
   dependencies = mod.config.dependencies;
-  sync.each(depNames, function(depName) {
+  return Promise.chain(depNames, function(depName) {
     var shouldRemove;
     log.moat(1);
     log.gray("Should we remove ");
     log.yellow(depName);
     log.gray("?");
     try {
-      shouldRemove = prompt.sync({
-        parseBool: true
-      });
+      shouldRemove = prompt.sync();
     } catch (error1) {}
+    if (shouldRemove === "s") {
+      throw Error("skip dependency");
+    }
+    shouldRemove = parseBool(shouldRemove);
     if (!shouldRemove) {
       return;
     }
@@ -143,8 +140,14 @@ printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
     } else {
       return delete implicitDeps[depName];
     }
+  }).fail(function(error) {
+    if (error.message === "skip dependency") {
+      return;
+    }
+    throw error;
+  }).then(function() {
+    return mod.saveConfig();
   });
-  return mod.saveConfig();
 };
 
 printMissingRelatives = function(mod, depNames, dependers) {
@@ -184,6 +187,9 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
     } catch (error1) {}
     if (version == null) {
       return;
+    }
+    if (version === "s") {
+      throw Error("skip dependency");
     }
     if (version === ".") {
       config = (base = mod.config).lotus != null ? base.lotus : base.lotus = {};
@@ -225,6 +231,11 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
       }
       return log.moat(1);
     });
+  }).fail(function(error) {
+    if (error.message === "skip dependency") {
+      return;
+    }
+    throw error;
   });
 };
 

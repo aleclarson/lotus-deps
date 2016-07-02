@@ -1,5 +1,6 @@
 
 Promise = require "Promise"
+semver = require "node-semver"
 sync = require "sync"
 
 module.exports = (type) ->
@@ -10,13 +11,16 @@ module.exports = (type) ->
 
   type.defineMethods
 
-    parseDependencies: ->
+    parseDependencies: (options) ->
 
       unless Promise.isRejected @_parsingDependencies
         return @_parsingDependencies
 
       @_parsingDependencies = @load [ "config" ]
-      .then => @crawl()
+
+      .then =>
+        @crawl options
+
       .then =>
         Promise.map @files, (file) ->
           file.parseDependencies()

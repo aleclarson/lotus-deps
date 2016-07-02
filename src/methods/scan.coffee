@@ -3,6 +3,7 @@
 
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
+parseBool = require "parse-bool"
 Promise = require "Promise"
 syncFs = require "io/sync"
 prompt = require "prompt"
@@ -14,21 +15,13 @@ has = require "has"
 
 module.exports = (options) ->
 
-  { Module } = lotus
+  if moduleName = options._.shift()
+    return lotus.Module.load moduleName
+    .then parseDependencies
 
-  log.clear()
-
-  modulePath = options._.shift()
-
-  if modulePath
-    modulePath = Module.resolvePath modulePath
-    moduleName = Path.relative lotus.path, modulePath
-    mod = Module moduleName
-    return parseDependencies mod
-
-  mods = Module.crawl lotus.path
-  Promise.chain mods, (mod) ->
-    parseDependencies mod
+  lotus.Module.crawl lotus.path
+  .then (mods) ->
+    Promise.chain mods, parseDependencies
 
 parseDependencies = (mod) ->
   mod.parseDependencies()
@@ -117,18 +110,32 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
   printResults "Unused absolutes: ", depNames
 
   { dependencies } = mod.config
-  sync.each depNames, (depName) ->
+  return Promise.chain depNames, (depName) ->
+
     log.moat 1
     log.gray "Should we remove "
     log.yellow depName
     log.gray "?"
-    try shouldRemove = prompt.sync { parseBool: yes }
+
+    try shouldRemove = prompt.sync()
+
+    if shouldRemove is "s"
+      throw Error "skip dependency"
+
+    shouldRemove = parseBool shouldRemove
     return if not shouldRemove
+
     if has dependencies, depName
       delete dependencies[depName]
-    else delete implicitDeps[depName]
 
-  mod.saveConfig()
+    else
+      delete implicitDeps[depName]
+
+  .fail (error) ->
+    return if error.message is "skip dependency"
+    throw error
+
+  .then -> mod.saveConfig()
 
 printMissingRelatives = (mod, depNames, dependers) ->
 
@@ -161,6 +168,9 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
 
     try version = prompt.sync()
     return if not version?
+
+    if version is "s"
+      throw Error "skip dependency"
 
     if version is "."
       config = mod.config.lotus ?= {}
@@ -202,6 +212,10 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
         log.gray.dim Failure(error).stacks.format()
         log.popIndent()
       log.moat 1
+
+  .fail (error) ->
+    return if error.message is "skip dependency"
+    throw error
 
 printResults = (title, deps, iterator = emptyFunction) ->
 

@@ -9,22 +9,19 @@ sync = require("sync");
 log = require("log");
 
 module.exports = function(options) {
-  var Module, mod, mods, moduleName, modulePath;
-  Module = lotus.Module;
-  log.clear();
-  modulePath = options._.shift();
-  if (modulePath) {
-    modulePath = Module.resolvePath(modulePath);
-    moduleName = Path.basename(modulePath);
-    mod = Module(moduleName);
-    return mod.parseDependencies().then(function() {
-      return printDependencies(mod);
+  var moduleName;
+  if (moduleName = options._.shift()) {
+    return lotus.Module.load(moduleName).then(function(module) {
+      return module.parseDependencies().then(function() {
+        return printDependencies(module);
+      });
     });
   }
-  mods = Module.crawl(lotus.path);
-  return Promise.chain(mods, function(mod) {
-    return mod.parseDependencies().then(function() {
-      return printDependencies(mod);
+  return lotus.Module.crawl(lotus.path).then(function(mods) {
+    return Promise.chain(mods, function(module) {
+      return module.parseDependencies().then(function() {
+        return printDependencies(module);
+      });
     });
   });
 };
