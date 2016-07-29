@@ -29,4 +29,4 @@ module.exports = function(type) {
   });
 };
 
-//# sourceMappingURL=../../map/src/File.map
+//# sourceMappingURL=map/File.map

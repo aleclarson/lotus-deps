@@ -1,7 +1,7 @@
 {
   "version": 3,
   "file": "list.js",
-  "sourceRoot": "../../../src/methods",
+  "sourceRoot": "../../../../src/methods",
   "sources": [
     "list.coffee"
   ],

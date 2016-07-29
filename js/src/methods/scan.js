@@ -35,6 +35,9 @@ module.exports = function(options) {
 };
 
 parseDependencies = function(mod) {
+  if (lotus.isModuleIgnored(mod.name)) {
+    return;
+  }
   return mod.parseDependencies().then(function() {
     return printDependencies(mod);
   }).fail(function(error) {
@@ -45,7 +48,7 @@ parseDependencies = function(mod) {
 };
 
 printDependencies = function(mod) {
-  var base, explicitDeps, foundDeps, hasIssues, implicitDeps, missingDepPaths, missingDeps, unexpectedDepNames, unexpectedDeps, unusedDepNames, unusedDeps;
+  var base, explicitDeps, foundDeps, implicitDeps, missingDepPaths, missingDeps, unexpectedDepNames, unexpectedDeps, unusedDepNames, unusedDeps;
   if (!mod.files) {
     return;
   }
@@ -92,24 +95,20 @@ printDependencies = function(mod) {
   unexpectedDepNames = Object.keys(unexpectedDeps);
   missingDepPaths = Object.keys(missingDeps);
   unusedDepNames = Object.keys(unusedDeps);
-  hasIssues = (unexpectedDepNames.length > 0) || (missingDepPaths.length > 0) || (unusedDepNames.length > 0);
+  if (!(unexpectedDepNames.length || missingDepPaths.length || unusedDepNames.length)) {
+    return;
+  }
   log.moat(1);
   log.bold(mod.name);
   log.plusIndent(2);
-  if (hasIssues) {
-    return Promise["try"](function() {
-      return printUnexpectedAbsolutes(mod, unexpectedDepNames, unexpectedDeps);
-    }).then(function() {
-      printUnusedAbsolutes(mod, unusedDepNames, implicitDeps);
-      printMissingRelatives(mod, missingDepPaths, missingDeps);
-      log.popIndent();
-      return log.moat(1);
-    });
-  }
-  log.moat(1);
-  log.green.dim("All dependencies look correct!");
-  log.popIndent();
-  return log.moat(1);
+  return Promise["try"](function() {
+    return printUnexpectedAbsolutes(mod, unexpectedDepNames, unexpectedDeps);
+  }).then(function() {
+    printUnusedAbsolutes(mod, unusedDepNames, implicitDeps);
+    printMissingRelatives(mod, missingDepPaths, missingDeps);
+    log.popIndent();
+    return log.moat(1);
+  });
 };
 
 printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
@@ -177,7 +176,7 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
     return log.popIndent();
   });
   return Promise.chain(depNames, function(depName) {
-    var base, config, implicitDeps, ref, user, version;
+    var base, config, implicitDeps, ref, ref1, username, version;
     log.moat(1);
     log.gray("Which version of ");
     log.yellow(depName);
@@ -201,16 +200,19 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
       mod.saveConfig();
       return;
     }
-    if (version[0] === "#") {
-      user = (ref = lotus.config.github) != null ? ref.username : void 0;
-      assert(user, "Must define 'github.username' in 'lotus.json' first!");
-      version = user + "/" + depName + version;
-    }
-    if (version[0] === "@") {
-      version = version.slice(1).split("#");
-      version = version[0] + "/" + depName + "#" + version;
+    if (0 <= version.indexOf(":")) {
+      ref = version.split(":"), username = ref[0], version = ref[1];
+      if (!username.length) {
+        username = (ref1 = lotus.config.github) != null ? ref1.username : void 0;
+      }
+      assert(username.length, "Must provide a username for git dependencies!");
+      version = username + "/" + depName + "#" + version;
     }
     return assertValidVersion(depName, version).then(function() {
+      var base1;
+      if ((base1 = mod.config).dependencies == null) {
+        base1.dependencies = {};
+      }
       mod.config.dependencies[depName] = version;
       return mod.saveConfig();
     }).fail(function(error) {
@@ -275,4 +277,4 @@ createImplicitMap = function(mod) {
   return results;
 };
 
-//# sourceMappingURL=../../../map/src/methods/scan.map
+//# sourceMappingURL=map/scan.map

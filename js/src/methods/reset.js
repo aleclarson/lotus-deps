@@ -1,3 +1,3 @@
 
 
-//# sourceMappingURL=../../../map/src/methods/reset.map
+//# sourceMappingURL=map/reset.map

@@ -24,6 +24,7 @@ module.exports = (options) ->
     Promise.chain mods, parseDependencies
 
 parseDependencies = (mod) ->
+  return if lotus.isModuleIgnored mod.name
   mod.parseDependencies()
   .then -> printDependencies mod
   .fail (error) -> throwFailure error, { mod }
@@ -80,28 +81,21 @@ printDependencies = (mod) ->
   missingDepPaths = Object.keys missingDeps
   unusedDepNames = Object.keys unusedDeps
 
-  hasIssues =
-    (unexpectedDepNames.length > 0) or
-    (missingDepPaths.length > 0) or
-    (unusedDepNames.length > 0)
+  # Skip modules that have no problems.
+  return unless unexpectedDepNames.length or missingDepPaths.length or unusedDepNames.length
 
   log.moat 1
   log.bold mod.name
   log.plusIndent 2
 
-  if hasIssues
-    return Promise.try ->
-      printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
-    .then ->
-      printUnusedAbsolutes mod, unusedDepNames, implicitDeps
-      printMissingRelatives mod, missingDepPaths, missingDeps
-      log.popIndent()
-      log.moat 1
+  Promise.try ->
+    printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
 
-  log.moat 1
-  log.green.dim "All dependencies look correct!"
-  log.popIndent()
-  log.moat 1
+  .then ->
+    printUnusedAbsolutes mod, unusedDepNames, implicitDeps
+    printMissingRelatives mod, missingDepPaths, missingDeps
+    log.popIndent()
+    log.moat 1
 
 printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
 
@@ -180,19 +174,17 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
       mod.saveConfig()
       return
 
-    if version[0] is "#"
-      user = lotus.config.github?.username
-      assert user, "Must define 'github.username' in 'lotus.json' first!"
-      version = user + "/" + depName + version
-
-    if version[0] is "@"
-      version = version.slice(1).split "#"
-      version = version[0] + "/" + depName + "#" + version
+    if 0 <= version.indexOf ":"
+      [username, version] = version.split ":"
+      username = lotus.config.github?.username if not username.length
+      assert username.length, "Must provide a username for git dependencies!"
+      version = username + "/" + depName + "#" + version
 
     assertValidVersion depName, version
 
     .then ->
       # FIXME: The line below throws when 'mod.config.dependencies' does not exist.
+      mod.config.dependencies ?= {}
       mod.config.dependencies[depName] = version
       mod.saveConfig()
 
