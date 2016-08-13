@@ -1,10 +1,8 @@
-var Promise, semver, sync;
+var Promise, semver;
 
 Promise = require("Promise");
 
 semver = require("node-semver");
-
-sync = require("sync");
 
 module.exports = function(type) {
   type.defineValues({

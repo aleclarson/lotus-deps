@@ -24,9 +24,14 @@ module.exports = (options) ->
     Promise.chain mods, parseDependencies
 
 parseDependencies = (mod) ->
+
   return if lotus.isModuleIgnored mod.name
-  mod.parseDependencies()
+
+  mod.parseDependencies
+    ignore: "**/{node_modules,__tests__}/**"
+
   .then -> printDependencies mod
+
   .fail (error) -> throwFailure error, { mod }
 
 printDependencies = (mod) ->
@@ -107,9 +112,9 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
   return Promise.chain depNames, (depName) ->
 
     log.moat 1
-    log.gray "Should we remove "
+    log.gray "Should "
     log.yellow depName
-    log.gray "?"
+    log.gray " be removed?"
 
     try shouldRemove = prompt.sync()
 
@@ -127,9 +132,16 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
 
   .fail (error) ->
     return if error.message is "skip dependency"
+    log.moat 1
+    log.red error.stack
+    log.moat 1
     throw error
 
-  .then -> mod.saveConfig()
+  .then ->
+    log.moat 1
+    log.green "Done!"
+    log.moat 1
+    mod.saveConfig()
 
 printMissingRelatives = (mod, depNames, dependers) ->
 

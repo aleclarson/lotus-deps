@@ -38,7 +38,9 @@ parseDependencies = function(mod) {
   if (lotus.isModuleIgnored(mod.name)) {
     return;
   }
-  return mod.parseDependencies().then(function() {
+  return mod.parseDependencies({
+    ignore: "**/{node_modules,__tests__}/**"
+  }).then(function() {
     return printDependencies(mod);
   }).fail(function(error) {
     return throwFailure(error, {
@@ -121,9 +123,9 @@ printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
   return Promise.chain(depNames, function(depName) {
     var shouldRemove;
     log.moat(1);
-    log.gray("Should we remove ");
+    log.gray("Should ");
     log.yellow(depName);
-    log.gray("?");
+    log.gray(" be removed?");
     try {
       shouldRemove = prompt.sync();
     } catch (error1) {}
@@ -143,8 +145,14 @@ printUnusedAbsolutes = function(mod, depNames, implicitDeps) {
     if (error.message === "skip dependency") {
       return;
     }
+    log.moat(1);
+    log.red(error.stack);
+    log.moat(1);
     throw error;
   }).then(function() {
+    log.moat(1);
+    log.green("Done!");
+    log.moat(1);
     return mod.saveConfig();
   });
 };

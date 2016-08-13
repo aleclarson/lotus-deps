@@ -19,10 +19,17 @@ module.exports = function(options) {
   }
   return lotus.Module.crawl(lotus.path).then(function(mods) {
     return Promise.chain(mods, function(module) {
+      if (lotus.isModuleIgnored(module.name)) {
+        return;
+      }
       return module.parseDependencies().then(function() {
         return printDependencies(module);
       });
     });
+  }).then(function() {
+    log.moat(1);
+    log.green("Done!");
+    return log.moat(1);
   });
 };
 
@@ -34,7 +41,7 @@ printDependencies = function(mod) {
     return sync.each(file.dependencies, function(path) {
       var files;
       if (path[0] === ".") {
-        path = lotus.resolve(file.path, path);
+        path = lotus.resolve(path, file.path);
         files = relatives[path] != null ? relatives[path] : relatives[path] = [];
       } else {
         files = absolutes[path] != null ? absolutes[path] : absolutes[path] = [];

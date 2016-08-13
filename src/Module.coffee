@@ -1,7 +1,6 @@
 
 Promise = require "Promise"
 semver = require "node-semver"
-sync = require "sync"
 
 module.exports = (type) ->
 
