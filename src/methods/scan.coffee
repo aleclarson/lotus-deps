@@ -1,6 +1,4 @@
 
-{ throwFailure } = Failure = require "failure"
-
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
 parseBool = require "parse-bool"
@@ -31,8 +29,6 @@ parseDependencies = (mod) ->
     ignore: "**/{node_modules,__tests__}/**"
 
   .then -> printDependencies mod
-
-  .fail (error) -> throwFailure error, { mod }
 
 printDependencies = (mod) ->
 
@@ -202,19 +198,13 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
 
     .fail (error) ->
       log.moat 1
-      log.gray.dim "depName = "
+      log.gray.dim "{ depName: "
       log.white depName
-      log.moat 0
-      log.gray.dim "version = "
+      log.gray.dim ", version: "
       log.white version
+      log.gray.dim " }"
       log.moat 0
-      log.red error.constructor.name + ": "
-      log.white error.message
-      if error.format isnt "simple"
-        log.moat 1
-        log.plusIndent 2
-        log.gray.dim Failure(error).stacks.format()
-        log.popIndent()
+      log.red error.stack
       log.moat 1
 
   .fail (error) ->

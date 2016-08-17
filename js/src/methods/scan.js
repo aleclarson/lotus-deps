@@ -1,6 +1,4 @@
-var Failure, Path, Promise, assert, assertValidVersion, createImplicitMap, emptyFunction, has, log, parseBool, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs, throwFailure;
-
-throwFailure = (Failure = require("failure")).throwFailure;
+var Path, Promise, assert, assertValidVersion, createImplicitMap, emptyFunction, has, log, parseBool, parseDependencies, printDependencies, printMissingRelatives, printResults, printUnexpectedAbsolutes, printUnusedAbsolutes, prompt, sync, syncFs;
 
 assertValidVersion = require("assertValidVersion");
 
@@ -42,10 +40,6 @@ parseDependencies = function(mod) {
     ignore: "**/{node_modules,__tests__}/**"
   }).then(function() {
     return printDependencies(mod);
-  }).fail(function(error) {
-    return throwFailure(error, {
-      mod: mod
-    });
   });
 };
 
@@ -225,20 +219,13 @@ printUnexpectedAbsolutes = function(mod, depNames, dependers) {
       return mod.saveConfig();
     }).fail(function(error) {
       log.moat(1);
-      log.gray.dim("depName = ");
+      log.gray.dim("{ depName: ");
       log.white(depName);
-      log.moat(0);
-      log.gray.dim("version = ");
+      log.gray.dim(", version: ");
       log.white(version);
+      log.gray.dim(" }");
       log.moat(0);
-      log.red(error.constructor.name + ": ");
-      log.white(error.message);
-      if (error.format !== "simple") {
-        log.moat(1);
-        log.plusIndent(2);
-        log.gray.dim(Failure(error).stacks.format());
-        log.popIndent();
-      }
+      log.red(error.stack);
       return log.moat(1);
     });
   }).fail(function(error) {
