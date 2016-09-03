@@ -49,8 +49,12 @@ upgradeDependency = (module, options) ->
         newUsername = lotus.config.github?.username
 
       if oldVersion
+
         if 0 <= oldVersion.indexOf "#"
           oldVersion = deps[options.name].split("#")[1]
+
+        if oldVersion is newVersion
+          return
 
       assert newUsername.length, "Must provide username for git dependencies!"
       deps[options.name] = newUsername + "/" + options.name + "#" + newVersion

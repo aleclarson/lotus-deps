@@ -48,6 +48,9 @@ upgradeDependency = function(module, options) {
         if (0 <= oldVersion.indexOf("#")) {
           oldVersion = deps[options.name].split("#")[1];
         }
+        if (oldVersion === newVersion) {
+          return;
+        }
       }
       assert(newUsername.length, "Must provide username for git dependencies!");
       deps[options.name] = newUsername + "/" + options.name + "#" + newVersion;
