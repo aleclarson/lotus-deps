@@ -1,7 +1,7 @@
 {
   "name": "lotus-deps",
   "version": "1.1.0",
-  "main": "js/src/index",
+  "main": "js/index",
   "peerDependencies": {
     "lotus": "3.2.x"
   },
