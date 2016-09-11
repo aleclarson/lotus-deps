@@ -15,8 +15,13 @@ module.exports = (options) ->
   lotus.Module.crawl lotus.path
   .then (mods) ->
     Promise.chain mods, (module) ->
+      return if lotus.isModuleIgnored module.name
       module.parseDependencies()
       .then -> printDependencies module
+  .then ->
+    log.moat 1
+    log.green "Done!"
+    log.moat 1
 
 printDependencies = (mod) ->
 
@@ -24,11 +29,10 @@ printDependencies = (mod) ->
   relatives = Object.create null
 
   sync.each mod.files, (file) ->
-
     sync.each file.dependencies, (path) ->
 
       if path[0] is "."
-        path = lotus.resolve file.path, path
+        path = lotus.resolve path, file.path
         files = relatives[path] ?= []
       else
         files = absolutes[path] ?= []

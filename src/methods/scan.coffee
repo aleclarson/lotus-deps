@@ -1,6 +1,4 @@
 
-{ throwFailure } = Failure = require "failure"
-
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
 parseBool = require "parse-bool"
@@ -24,9 +22,13 @@ module.exports = (options) ->
     Promise.chain mods, parseDependencies
 
 parseDependencies = (mod) ->
-  mod.parseDependencies()
+
+  return if lotus.isModuleIgnored mod.name
+
+  mod.parseDependencies
+    ignore: "**/{node_modules,__tests__}/**"
+
   .then -> printDependencies mod
-  .fail (error) -> throwFailure error, { mod }
 
 printDependencies = (mod) ->
 
@@ -51,6 +53,9 @@ printDependencies = (mod) ->
   sync.each mod.files, (file) ->
 
     sync.each file.dependencies, (dep) ->
+
+      if dep.startsWith "image!"
+        return
 
       if dep[0] is "."
         depPath = lotus.resolve dep, file.path
@@ -80,28 +85,21 @@ printDependencies = (mod) ->
   missingDepPaths = Object.keys missingDeps
   unusedDepNames = Object.keys unusedDeps
 
-  hasIssues =
-    (unexpectedDepNames.length > 0) or
-    (missingDepPaths.length > 0) or
-    (unusedDepNames.length > 0)
+  # Skip modules that have no problems.
+  return unless unexpectedDepNames.length or missingDepPaths.length or unusedDepNames.length
 
   log.moat 1
   log.bold mod.name
   log.plusIndent 2
 
-  if hasIssues
-    return Promise.try ->
-      printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
-    .then ->
-      printUnusedAbsolutes mod, unusedDepNames, implicitDeps
-      printMissingRelatives mod, missingDepPaths, missingDeps
-      log.popIndent()
-      log.moat 1
+  Promise.try ->
+    printUnexpectedAbsolutes mod, unexpectedDepNames, unexpectedDeps
 
-  log.moat 1
-  log.green.dim "All dependencies look correct!"
-  log.popIndent()
-  log.moat 1
+  .then ->
+    printUnusedAbsolutes mod, unusedDepNames, implicitDeps
+    printMissingRelatives mod, missingDepPaths, missingDeps
+    log.popIndent()
+    log.moat 1
 
 printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
 
@@ -113,12 +111,11 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
   return Promise.chain depNames, (depName) ->
 
     log.moat 1
-    log.gray "Should we remove "
+    log.gray "Should "
     log.yellow depName
-    log.gray "?"
+    log.gray " be removed?"
 
-    try shouldRemove = prompt.sync()
-
+    shouldRemove = prompt.sync()
     if shouldRemove is "s"
       throw Error "skip dependency"
 
@@ -133,9 +130,16 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
 
   .fail (error) ->
     return if error.message is "skip dependency"
+    log.moat 1
+    log.red error.stack
+    log.moat 1
     throw error
 
-  .then -> mod.saveConfig()
+  .then ->
+    log.moat 1
+    log.green "Done!"
+    log.moat 1
+    mod.saveConfig()
 
 printMissingRelatives = (mod, depNames, dependers) ->
 
@@ -166,7 +170,7 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
     log.yellow depName
     log.gray " should be depended on?"
 
-    try version = prompt.sync()
+    version = prompt.sync()
     return if not version?
 
     if version is "s"
@@ -180,37 +184,29 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
       mod.saveConfig()
       return
 
-    if version[0] is "#"
-      user = lotus.config.github?.username
-      assert user, "Must define 'github.username' in 'lotus.json' first!"
-      version = user + "/" + depName + version
-
-    if version[0] is "@"
-      version = version.slice(1).split "#"
-      version = version[0] + "/" + depName + "#" + version
+    if 0 <= version.indexOf ":"
+      [username, version] = version.split ":"
+      username = lotus.config.github?.username if not username.length
+      assert username.length, "Must provide a username for git dependencies!"
+      version = username + "/" + depName + "#" + version
 
     assertValidVersion depName, version
 
     .then ->
       # FIXME: The line below throws when 'mod.config.dependencies' does not exist.
+      mod.config.dependencies ?= {}
       mod.config.dependencies[depName] = version
       mod.saveConfig()
 
     .fail (error) ->
       log.moat 1
-      log.gray.dim "depName = "
+      log.gray.dim "{ depName: "
       log.white depName
-      log.moat 0
-      log.gray.dim "version = "
+      log.gray.dim ", version: "
       log.white version
+      log.gray.dim " }"
       log.moat 0
-      log.red error.constructor.name + ": "
-      log.white error.message
-      if error.format isnt "simple"
-        log.moat 1
-        log.plusIndent 2
-        log.gray.dim Failure(error).stacks.format()
-        log.popIndent()
+      log.red error.stack
       log.moat 1
 
   .fail (error) ->
