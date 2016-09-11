@@ -54,6 +54,9 @@ printDependencies = (mod) ->
 
     sync.each file.dependencies, (dep) ->
 
+      if dep.startsWith "image!"
+        return
+
       if dep[0] is "."
         depPath = lotus.resolve dep, file.path
         return if depPath
@@ -112,8 +115,7 @@ printUnusedAbsolutes = (mod, depNames, implicitDeps) ->
     log.yellow depName
     log.gray " be removed?"
 
-    try shouldRemove = prompt.sync()
-
+    shouldRemove = prompt.sync()
     if shouldRemove is "s"
       throw Error "skip dependency"
 
@@ -168,7 +170,7 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
     log.yellow depName
     log.gray " should be depended on?"
 
-    try version = prompt.sync()
+    version = prompt.sync()
     return if not version?
 
     if version is "s"
