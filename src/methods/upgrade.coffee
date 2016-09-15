@@ -5,6 +5,8 @@ exec = require "exec"
 path = require "path"
 fs = require "io/sync"
 
+npmCache = Object.create null
+
 module.exports = (options) ->
 
   options.name = options._.shift()
@@ -61,6 +63,7 @@ upgradeDependency = (module, options) ->
           oldVersion = deps[options.name].split("#")[1]
 
         if oldVersion is newVersion
+          return if options.all
           log.warn "You passed the current version!"
           return process.exit()
 
@@ -81,6 +84,9 @@ upgradeDependency = (module, options) ->
         return process.exit()
 
     log.moat 1
+    if options.all
+      log.green module.name
+      log.moat 0
     log.white options.name + ": "
     if oldVersion
       log.gray oldVersion
@@ -96,28 +102,42 @@ upgradeDependency = (module, options) ->
     installedPath = path.join module.path, "node_modules", options.name
     return if fs.exists installedPath
 
-    # Install remote dependencies.
+    # Link local dependencies.
     if newUsername and newVersion.startsWith newUsername
-      log.moat 1
-      log.white "Installing remote dependency: "
-      log.green options.name
-      log.moat 1
-      try exec.sync "npm install #{options.name}", cwd: module.path
-      catch error
-         throw error unless /WARN/.test error.message
-
-    else
-      globalPath = path.join process.env.HOME, "lib/node_modules"
-      if fs.exists globalPath
+      globalPath = path.join process.env.HOME, "lib", "node_modules", options.name
+      if not fs.exists globalPath
         log.warn "Directory does not exist: " + log.color.red globalPath
         return process.exit()
 
       # Ensure the 'node_modules' dir exists.
-      fs.makeDir depJson.path + "/node_modules"
+      fs.makeDir path.join module.path, "node_modules"
 
       log.moat 1
-      log.white "Linking local dependency: "
-      log.green options.name
+      log.white "Linking local dependency:"
+      log.plusIndent 2
+      log.moat 0
+      log.green installedPath
+      log.moat 0
+      log.gray " -> " + globalPath
+      log.popIndent()
       log.moat 1
+      log.flush()
+
       exec.sync "ln -s #{globalPath} #{installedPath}"
       return
+
+    log.moat 1
+    log.white "Installing remote dependency: "
+    log.moat 0
+    log.green installedPath
+    log.moat 1
+    log.flush()
+
+    if cachedPath = npmCache[options.name]
+      fs.copy cachedPath, installedPath, {recursive: yes}
+      return
+
+    npmCache[options.name] = installedPath
+    try exec.sync "npm install #{options.name}", cwd: module.path
+    catch error
+       throw error unless /WARN/.test error.message

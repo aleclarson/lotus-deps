@@ -177,8 +177,7 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
       throw Error "skip dependency"
 
     if version is "."
-      config = mod.config.lotus ?= {}
-      implicitDeps = config.implicitDependencies ?= []
+      implicitDeps = mod.config.implicitDependencies ?= []
       implicitDeps.push depName
       implicitDeps.sort (a, b) -> a > b # sorted by ascending
       mod.saveConfig()
@@ -193,7 +192,6 @@ printUnexpectedAbsolutes = (mod, depNames, dependers) ->
     assertValidVersion depName, version
 
     .then ->
-      # FIXME: The line below throws when 'mod.config.dependencies' does not exist.
       mod.config.dependencies ?= {}
       mod.config.dependencies[depName] = version
       mod.saveConfig()
@@ -230,10 +228,8 @@ printResults = (title, deps, iterator = emptyFunction) ->
   log.moat 1
 
 createImplicitMap = (mod) ->
-  results = Object.create null
-  config = mod.config.lotus
-  if config
-    deps = config.implicitDependencies
-    if Array.isArray deps
-      results[dep] = yes for dep in deps
-  return results
+  map = Object.create null
+  deps = mod.config.implicitDependencies
+  if Array.isArray deps
+    map[dep] = yes for dep in deps
+  return map
