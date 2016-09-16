@@ -1,5 +1,4 @@
 
-Promise = require "Promise"
 Path = require "path"
 sync = require "sync"
 log = require "log"

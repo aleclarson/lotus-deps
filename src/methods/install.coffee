@@ -5,7 +5,6 @@
 # 2. Install all remote deps.
 # 3. Ignore local deps, unless an old version is needed (prompt if this happens).
 
-Promise = require "Promise"
 semver = require "node-semver"
 exec = require "exec"
 fs = require "io"

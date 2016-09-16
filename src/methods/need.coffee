@@ -1,5 +1,4 @@
 
-Promise = require "Promise"
 isType = require "isType"
 sync = require "sync"
 has = require "has"

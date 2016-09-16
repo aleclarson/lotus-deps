@@ -2,7 +2,6 @@
 assertValidVersion = require "assertValidVersion"
 emptyFunction = require "emptyFunction"
 parseBool = require "parse-bool"
-Promise = require "Promise"
 syncFs = require "io/sync"
 prompt = require "prompt"
 assert = require "assert"

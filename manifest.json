@@ -1,0 +1,754 @@
+{
+  "assert": {
+    "path": "/Users/aleclarsoniv/lib/modules/assert",
+    "dependers": [
+      "lotus-deps",
+      "assertValidVersion",
+      "Event",
+      "Formatter",
+      "prompt"
+    ]
+  },
+  "assertValidVersion": {
+    "path": "/Users/aleclarsoniv/lib/modules/assertValidVersion",
+    "dependers": [
+      "lotus-deps"
+    ]
+  },
+  "Promise": {
+    "path": "/Users/aleclarsoniv/lib/modules/Promise",
+    "dependers": [
+      "assertValidVersion",
+      "exec",
+      "io",
+      "globby",
+      "fetch",
+      "Logger",
+      "prompt"
+    ]
+  },
+  "PureObject": {
+    "path": "/Users/aleclarsoniv/lib/modules/PureObject",
+    "dependers": [
+      "Promise",
+      "mergeDefaults",
+      "cloneObject",
+      "Builder",
+      "sync",
+      "Formatter",
+      "getType"
+    ]
+  },
+  "Validator": {
+    "path": "/Users/aleclarsoniv/lib/modules/Validator",
+    "dependers": [
+      "PureObject",
+      "isType",
+      "Null",
+      "Typle",
+      "assertType",
+      "Kind",
+      "Void",
+      "Maybe",
+      "Shape",
+      "Type",
+      "Nan",
+      "Formatter"
+    ]
+  },
+  "NamedFunction": {
+    "path": "/Users/aleclarsoniv/lib/modules/NamedFunction",
+    "dependers": [
+      "Validator",
+      "Builder",
+      "Property",
+      "Super",
+      "ValueMapper",
+      "Type",
+      "TimeMarker"
+    ]
+  },
+  "isDev": {
+    "path": "/Users/aleclarsoniv/lib/modules/isDev",
+    "dependers": [
+      "NamedFunction",
+      "Validator",
+      "Property",
+      "mergeDefaults",
+      "Super",
+      "bind",
+      "Builder",
+      "Type",
+      "Event",
+      "StrictMap"
+    ]
+  },
+  "exposeToGlobal": {
+    "path": "/Users/aleclarsoniv/lib/modules/exposeToGlobal",
+    "dependers": [
+      "isDev",
+      "isNodeJS",
+      "isReactNative"
+    ]
+  },
+  "postinstall-build": {
+    "remote": true,
+    "dependers": [
+      "exposeToGlobal",
+      "NamedFunction",
+      "Validator",
+      "steal",
+      "PureObject",
+      "formatType",
+      "wrongType",
+      "InjectableMap",
+      "emptyFunction",
+      "isProto",
+      "Null",
+      "Typle",
+      "assertType",
+      "cloneObject",
+      "mergeDefaults",
+      "Property",
+      "Kind",
+      "getKind",
+      "Super",
+      "ValueMapper",
+      "applyChain",
+      "bind",
+      "define",
+      "Builder",
+      "sync",
+      "tracer",
+      "Maybe",
+      "Shape",
+      "Type",
+      "Promise",
+      "io",
+      "exec",
+      "finder",
+      "Event",
+      "Nan",
+      "StrictMap",
+      "keymirror",
+      "Formatter",
+      "hook",
+      "Logger",
+      "log",
+      "assertValidVersion",
+      "parse-bool",
+      "lotus-deps",
+      "TimeMarker",
+      "prompt"
+    ]
+  },
+  "isNodeJS": {
+    "path": "/Users/aleclarsoniv/lib/modules/isNodeJS",
+    "dependers": [
+      "isDev",
+      "immediate",
+      "Formatter",
+      "Logger",
+      "log"
+    ]
+  },
+  "isConstructor": {
+    "path": "/Users/aleclarsoniv/lib/modules/isConstructor",
+    "dependers": [
+      "Validator",
+      "define",
+      "Nan"
+    ]
+  },
+  "setKind": {
+    "path": "/Users/aleclarsoniv/lib/modules/setKind",
+    "dependers": [
+      "Validator",
+      "Super",
+      "Builder",
+      "Type"
+    ]
+  },
+  "setType": {
+    "path": "/Users/aleclarsoniv/lib/modules/setType",
+    "dependers": [
+      "setKind",
+      "Validator",
+      "Property",
+      "Super",
+      "ValueMapper",
+      "Builder",
+      "Type",
+      "TimeMarker"
+    ]
+  },
+  "setProto": {
+    "path": "/Users/aleclarsoniv/lib/modules/setProto",
+    "dependers": [
+      "setType"
+    ]
+  },
+  "steal": {
+    "path": "/Users/aleclarsoniv/lib/modules/steal",
+    "dependers": [
+      "Validator",
+      "Formatter"
+    ]
+  },
+  "getProto": {
+    "path": "/Users/aleclarsoniv/lib/modules/getProto",
+    "dependers": [
+      "steal",
+      "PureObject",
+      "getKind",
+      "Event"
+    ]
+  },
+  "wrongType": {
+    "path": "/Users/aleclarsoniv/lib/modules/wrongType",
+    "dependers": [
+      "PureObject",
+      "Null",
+      "Typle",
+      "assertType",
+      "Property",
+      "Kind",
+      "Void",
+      "Maybe",
+      "Shape",
+      "Nan"
+    ]
+  },
+  "formatType": {
+    "path": "/Users/aleclarsoniv/lib/modules/formatType",
+    "dependers": [
+      "wrongType",
+      "Typle",
+      "Maybe"
+    ]
+  },
+  "in-array": {
+    "path": "/Users/aleclarsoniv/lib/modules/in-array",
+    "dependers": [
+      "formatType",
+      "Builder",
+      "assertValidVersion",
+      "parse-bool"
+    ]
+  },
+  "Type": {
+    "path": "/Users/aleclarsoniv/lib/modules/Type",
+    "dependers": [
+      "Promise",
+      "io",
+      "finder",
+      "Event",
+      "StrictMap",
+      "Formatter",
+      "Logger",
+      "log",
+      "prompt"
+    ]
+  },
+  "Builder": {
+    "path": "/Users/aleclarsoniv/lib/modules/Builder",
+    "dependers": [
+      "Type",
+      "Event"
+    ]
+  },
+  "InjectableMap": {
+    "path": "/Users/aleclarsoniv/lib/modules/InjectableMap",
+    "dependers": [
+      "Builder"
+    ]
+  },
+  "Property": {
+    "path": "/Users/aleclarsoniv/lib/modules/Property",
+    "dependers": [
+      "Builder",
+      "Super",
+      "ValueMapper",
+      "define",
+      "Type",
+      "Event",
+      "StrictMap",
+      "Logger"
+    ]
+  },
+  "InjectableType": {
+    "remote": true,
+    "dependers": [
+      "Property"
+    ]
+  },
+  "emptyFunction": {
+    "path": "/Users/aleclarsoniv/lib/modules/emptyFunction",
+    "dependers": [
+      "Property",
+      "bind",
+      "Builder",
+      "Type",
+      "Promise",
+      "io",
+      "Event",
+      "Formatter",
+      "Logger",
+      "hook",
+      "lotus-deps",
+      "prompt"
+    ]
+  },
+  "isProto": {
+    "path": "/Users/aleclarsoniv/lib/modules/isProto",
+    "dependers": [
+      "Property"
+    ]
+  },
+  "isType": {
+    "path": "/Users/aleclarsoniv/lib/modules/isType",
+    "dependers": [
+      "Property",
+      "Typle",
+      "assertType",
+      "cloneObject",
+      "mergeDefaults",
+      "ValueMapper",
+      "Builder",
+      "Maybe",
+      "Shape",
+      "Type",
+      "Promise",
+      "exec",
+      "finder",
+      "assertValidVersion",
+      "Event",
+      "Formatter",
+      "Logger",
+      "lotus-deps",
+      "prompt"
+    ]
+  },
+  "mergeDefaults": {
+    "path": "/Users/aleclarsoniv/lib/modules/mergeDefaults",
+    "dependers": [
+      "Property"
+    ]
+  },
+  "Typle": {
+    "path": "/Users/aleclarsoniv/lib/modules/Typle",
+    "dependers": [
+      "mergeDefaults",
+      "cloneObject",
+      "ValueMapper",
+      "sync",
+      "Type",
+      "io"
+    ]
+  },
+  "Null": {
+    "path": "/Users/aleclarsoniv/lib/modules/Null",
+    "dependers": [
+      "Typle",
+      "io",
+      "finder",
+      "Formatter",
+      "getType",
+      "Logger",
+      "prompt"
+    ]
+  },
+  "assertType": {
+    "path": "/Users/aleclarsoniv/lib/modules/assertType",
+    "dependers": [
+      "mergeDefaults",
+      "cloneObject",
+      "Super",
+      "ValueMapper",
+      "assertTypes",
+      "applyChain",
+      "Builder",
+      "bind",
+      "sync",
+      "Shape",
+      "Type",
+      "Promise",
+      "immediate",
+      "assertValidVersion",
+      "exec",
+      "io",
+      "finder",
+      "Event",
+      "StrictMap",
+      "Formatter",
+      "Logger",
+      "prompt"
+    ]
+  },
+  "cloneObject": {
+    "path": "/Users/aleclarsoniv/lib/modules/cloneObject",
+    "dependers": [
+      "mergeDefaults",
+      "Logger"
+    ]
+  },
+  "Super": {
+    "path": "/Users/aleclarsoniv/lib/modules/Super",
+    "dependers": [
+      "Builder"
+    ]
+  },
+  "Kind": {
+    "path": "/Users/aleclarsoniv/lib/modules/Kind",
+    "dependers": [
+      "Super",
+      "Type"
+    ]
+  },
+  "getKind": {
+    "path": "/Users/aleclarsoniv/lib/modules/getKind",
+    "dependers": [
+      "Super",
+      "Formatter"
+    ]
+  },
+  "ValueMapper": {
+    "path": "/Users/aleclarsoniv/lib/modules/ValueMapper",
+    "dependers": [
+      "Builder"
+    ]
+  },
+  "Void": {
+    "path": "/Users/aleclarsoniv/lib/modules/Void",
+    "dependers": [
+      "ValueMapper",
+      "Maybe",
+      "Formatter",
+      "getType"
+    ]
+  },
+  "assertTypes": {
+    "path": "/Users/aleclarsoniv/lib/modules/assertTypes",
+    "dependers": [
+      "ValueMapper",
+      "exec"
+    ]
+  },
+  "applyChain": {
+    "path": "/Users/aleclarsoniv/lib/modules/applyChain",
+    "dependers": [
+      "Builder"
+    ]
+  },
+  "bind": {
+    "path": "/Users/aleclarsoniv/lib/modules/bind",
+    "dependers": [
+      "Builder",
+      "Type",
+      "Promise"
+    ]
+  },
+  "define": {
+    "path": "/Users/aleclarsoniv/lib/modules/define",
+    "dependers": [
+      "Builder",
+      "Type"
+    ]
+  },
+  "sync": {
+    "path": "/Users/aleclarsoniv/lib/modules/sync",
+    "dependers": [
+      "Builder",
+      "Type",
+      "Promise",
+      "StrictMap",
+      "Formatter",
+      "Logger",
+      "log",
+      "lotus-deps"
+    ]
+  },
+  "tracer": {
+    "path": "/Users/aleclarsoniv/lib/modules/tracer",
+    "dependers": [
+      "Builder",
+      "Type",
+      "Promise",
+      "Event"
+    ]
+  },
+  "Maybe": {
+    "path": "/Users/aleclarsoniv/lib/modules/Maybe",
+    "dependers": [
+      "Type"
+    ]
+  },
+  "Shape": {
+    "path": "/Users/aleclarsoniv/lib/modules/Shape",
+    "dependers": [
+      "Type",
+      "Logger"
+    ]
+  },
+  "cloneArgs": {
+    "path": "/Users/aleclarsoniv/lib/modules/cloneArgs",
+    "dependers": [
+      "Type",
+      "Logger"
+    ]
+  },
+  "hasKeys": {
+    "path": "/Users/aleclarsoniv/lib/modules/hasKeys",
+    "dependers": [
+      "Type",
+      "Promise",
+      "Formatter",
+      "lotus-deps"
+    ]
+  },
+  "has": {
+    "path": "/Users/aleclarsoniv/lib/modules/has",
+    "dependers": [
+      "hasKeys",
+      "Promise",
+      "io",
+      "Formatter",
+      "keymirror",
+      "lotus-deps"
+    ]
+  },
+  "immediate": {
+    "path": "/Users/aleclarsoniv/lib/modules/immediate",
+    "dependers": [
+      "Promise",
+      "Event",
+      "prompt"
+    ]
+  },
+  "isReactNative": {
+    "path": "/Users/aleclarsoniv/lib/modules/isReactNative",
+    "dependers": [
+      "immediate"
+    ]
+  },
+  "exec": {
+    "path": "/Users/aleclarsoniv/lib/modules/exec",
+    "dependers": [
+      "assertValidVersion",
+      "lotus-deps"
+    ]
+  },
+  "io": {
+    "path": "/Users/aleclarsoniv/lib/modules/io",
+    "dependers": [
+      "exec",
+      "lotus-deps"
+    ]
+  },
+  "globby": {
+    "path": "/Users/aleclarsoniv/lib/modules/globby",
+    "dependers": [
+      "io"
+    ]
+  },
+  "array-union": {
+    "remote": true,
+    "dependers": [
+      "globby"
+    ]
+  },
+  "arrify": {
+    "remote": true,
+    "dependers": [
+      "globby"
+    ]
+  },
+  "glob": {
+    "remote": true,
+    "dependers": [
+      "globby",
+      "rimraf"
+    ]
+  },
+  "object-assign": {
+    "remote": true,
+    "dependers": [
+      "globby"
+    ]
+  },
+  "graceful-fs": {
+    "path": "/Users/aleclarsoniv/lib/modules/graceful-fs",
+    "dependers": [
+      "io"
+    ]
+  },
+  "iconv-lite": {
+    "remote": true,
+    "dependers": [
+      "io"
+    ]
+  },
+  "mkdirp": {
+    "remote": true,
+    "dependers": [
+      "io"
+    ]
+  },
+  "rimraf": {
+    "path": "/Users/aleclarsoniv/lib/modules/rimraf",
+    "dependers": [
+      "io"
+    ]
+  },
+  "fetch": {
+    "path": "/Users/aleclarsoniv/lib/modules/fetch",
+    "dependers": [
+      "assertValidVersion"
+    ]
+  },
+  "XMLHttpRequest": {
+    "path": "/Users/aleclarsoniv/lib/modules/XMLHttpRequest",
+    "dependers": [
+      "fetch"
+    ]
+  },
+  "finder": {
+    "path": "/Users/aleclarsoniv/lib/modules/finder",
+    "dependers": [
+      "assertValidVersion",
+      "lotus-deps"
+    ]
+  },
+  "log": {
+    "path": "/Users/aleclarsoniv/lib/modules/log",
+    "dependers": [
+      "assertValidVersion",
+      "TimeMarker",
+      "prompt"
+    ]
+  },
+  "Logger": {
+    "path": "/Users/aleclarsoniv/lib/modules/Logger",
+    "dependers": [
+      "log"
+    ]
+  },
+  "Event": {
+    "path": "/Users/aleclarsoniv/lib/modules/Event",
+    "dependers": [
+      "Logger",
+      "prompt"
+    ]
+  },
+  "Formatter": {
+    "path": "/Users/aleclarsoniv/lib/modules/Formatter",
+    "dependers": [
+      "Logger"
+    ]
+  },
+  "Nan": {
+    "path": "/Users/aleclarsoniv/lib/modules/Nan",
+    "dependers": [
+      "Formatter",
+      "getType",
+      "Logger"
+    ]
+  },
+  "StrictMap": {
+    "path": "/Users/aleclarsoniv/lib/modules/StrictMap",
+    "dependers": [
+      "Formatter"
+    ]
+  },
+  "getType": {
+    "path": "/Users/aleclarsoniv/lib/modules/getType",
+    "dependers": [
+      "Formatter"
+    ]
+  },
+  "keymirror": {
+    "path": "/Users/aleclarsoniv/lib/modules/keymirror",
+    "dependers": [
+      "Formatter"
+    ]
+  },
+  "repeat-string": {
+    "path": "/Users/aleclarsoniv/lib/modules/repeat-string",
+    "dependers": [
+      "Formatter",
+      "Logger",
+      "log"
+    ]
+  },
+  "replace": {
+    "path": "/Users/aleclarsoniv/lib/modules/replace",
+    "dependers": [
+      "Formatter"
+    ]
+  },
+  "strip-ansi": {
+    "path": "/Users/aleclarsoniv/lib/modules/strip-ansi",
+    "dependers": [
+      "Formatter",
+      "Logger",
+      "prompt"
+    ]
+  },
+  "ansi-regex": {
+    "remote": true,
+    "dependers": [
+      "strip-ansi"
+    ]
+  },
+  "ansi-256-colors": {
+    "remote": true,
+    "dependers": [
+      "Logger"
+    ]
+  },
+  "hook": {
+    "path": "/Users/aleclarsoniv/lib/modules/hook",
+    "dependers": [
+      "Logger",
+      "log"
+    ]
+  },
+  "clampValue": {
+    "path": "/Users/aleclarsoniv/lib/modules/clampValue",
+    "dependers": [
+      "log"
+    ]
+  },
+  "node-semver": {
+    "path": "/Users/aleclarsoniv/lib/modules/node-semver",
+    "dependers": [
+      "assertValidVersion",
+      "lotus-deps"
+    ]
+  },
+  "parse-bool": {
+    "path": "/Users/aleclarsoniv/lib/modules/parse-bool",
+    "dependers": [
+      "lotus-deps",
+      "prompt"
+    ]
+  },
+  "prompt": {
+    "path": "/Users/aleclarsoniv/lib/modules/prompt",
+    "dependers": [
+      "lotus-deps"
+    ]
+  },
+  "TimeMarker": {
+    "path": "/Users/aleclarsoniv/lib/modules/TimeMarker",
+    "dependers": [
+      "prompt"
+    ]
+  },
+  "keypress": {
+    "path": "/Users/aleclarsoniv/lib/modules/keypress",
+    "dependers": [
+      "prompt"
+    ]
+  }
+}

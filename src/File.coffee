@@ -1,5 +1,4 @@
 
-Promise = require "Promise"
 Finder = require "finder"
 syncFs = require "io/sync"
 

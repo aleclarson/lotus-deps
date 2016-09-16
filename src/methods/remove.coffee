@@ -4,7 +4,6 @@
 # 1. Remove the given dependency from 'package.json'!
 #    Warn if the dependency does not exist.
 
-Promise = require "Promise"
 hasKeys = require "hasKeys"
 assert = require "assert"
 isType = require "isType"

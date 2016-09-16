@@ -1,5 +1,4 @@
 
-Promise = require "Promise"
 semver = require "node-semver"
 
 module.exports = (type) ->
