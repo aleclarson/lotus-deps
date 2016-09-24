@@ -20,5 +20,5 @@ module.exports = (type) ->
         @crawl options
 
       .then =>
-        Promise.map @files, (file) ->
+        Promise.all @files, (file) ->
           file.parseDependencies()

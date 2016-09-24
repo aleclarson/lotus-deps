@@ -16,7 +16,7 @@ module.exports = (options) ->
   if options.all
     return lotus.Module.crawl()
     .then (modules) ->
-      Promise.map modules, (module) ->
+      Promise.all modules, (module) ->
         removeDependency module, options
 
   lotus.Module.load process.cwd()

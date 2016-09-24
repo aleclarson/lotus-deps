@@ -22,7 +22,7 @@ module.exports = (options) ->
 
   .then (mods) ->
 
-    Promise.map mods, (mod) ->
+    Promise.all mods, (mod) ->
       mod.load [ "config" ]
 
     .then ->
